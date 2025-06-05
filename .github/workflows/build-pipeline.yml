@@ -22,11 +22,17 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install coverage
+          pip install coverage pytest pytest-cov
           if  [ -f requirements_dev.txt ]; then pip install -r requirements_dev.txt; else pip install .; fi
       - name: Run Tests
         run: |
-          pytest tests/
+          # 显示项目结构以便调试
+          find . -type f -name "*.py" | sort
+          # 运行测试并生成详细输出
+          pytest tests/ -v --no-header --no-summary || {
+            echo "测试失败，查看错误详情";
+            exit 1;
+          }
       - name: Run package creation
         run: |
           python -m pip install --user --upgrade build
