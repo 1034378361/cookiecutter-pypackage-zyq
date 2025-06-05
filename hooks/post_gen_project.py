@@ -326,7 +326,7 @@ if __name__ == '__main__':
       id: generate_notes
       run: |
         # 查找最近两个标签
-        CURRENT_TAG="v${{ steps.get_version.outputs.version }}"
+        CURRENT_TAG="v${{{{ steps.get_version.outputs.version }}}}"
         PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${CURRENT_TAG}$" | head -n 1)
 
         # 如果没有之前的标签，使用第一个提交
@@ -356,9 +356,10 @@ if __name__ == '__main__':
 
             # 修改输出变量引用
             content = content.replace(
-                'release_notes: ${{ steps.get_changelog.outputs.release_notes }}',
-                'release_notes: ${{ steps.generate_notes.outputs.release_notes }}'
+                '{% raw %}release_notes: ${{ steps.get_changelog.outputs.release_notes }}{% endraw %}',
+                '{% raw %}release_notes: ${{ steps.generate_notes.outputs.release_notes }}{% endraw %}'
             )
+
 
             publish_workflow.write_text(content)
 
