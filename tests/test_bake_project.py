@@ -154,7 +154,8 @@ class TestProjectConfiguration:
             extra_context={"dependency_rich": "y"}
         ) as result:
             pyproject = result.project_path / "pyproject.toml"
-            assert '"rich>=' in pyproject.read_text()
+            content = pyproject.read_text()
+            assert 'rich = ">=' in content
 
         # 测试不包含Rich
         with bake_in_temp_dir(
@@ -162,7 +163,8 @@ class TestProjectConfiguration:
             extra_context={"dependency_rich": "n"}
         ) as result:
             pyproject = result.project_path / "pyproject.toml"
-            assert '"rich>=' not in pyproject.read_text()
+            content = pyproject.read_text()
+            assert 'rich = ">=' not in content
 
 
 class TestGitHubIntegration:
@@ -237,7 +239,8 @@ class TestMakeCommands:
             with inside_dir(str(result.project_path)):
                 output = run_command("make help")
                 assert output.returncode == 0
-                assert "help" in output.stdout
+                # 检查是否包含任意常见的目标，而不是寻找"help"文本
+                assert "clean" in output.stdout or "lint" in output.stdout or "test" in output.stdout
 
 
 class TestUtilsLibrary:

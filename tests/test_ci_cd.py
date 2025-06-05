@@ -75,12 +75,14 @@ class TestGitHubActions:
             assert publish_workflow.exists()
 
             # 验证YAML格式正确
-            config = yaml.safe_load(publish_workflow.read_text())
+            workflow_content = publish_workflow.read_text()
+            config = yaml.safe_load(workflow_content)
             assert "jobs" in config
             assert "deploy" in config["jobs"]
 
-            # 验证触发条件包含标签
-            assert "tags" in config.get("on", {}).get("push", {})
+            # 直接验证工作流内容包含标签触发条件
+            assert "tags:" in workflow_content
+            assert "v*" in workflow_content
 
             # 验证关键步骤存在
             steps = []

@@ -24,6 +24,11 @@ class TestVersionManagement:
             assert version_file.exists()
             assert "get_version" in version_file.read_text()
 
+            # 检查__init__.py包含对_version的引用
+            init_file = result.project_path / "src" / "version_test" / "__init__.py"
+            init_content = init_file.read_text()
+            assert "from ._version import" in init_content
+
         # 测试不包含版本管理功能
         with bake_in_temp_dir(
             cookies,
