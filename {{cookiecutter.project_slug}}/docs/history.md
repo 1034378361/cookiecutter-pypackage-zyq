@@ -8,6 +8,8 @@
 
 ## 完整历史
 
-{%
-  include-markdown "./_includes/history.md"
-%}
+<!--
+此处将包含自动生成的完整变更历史。
+生成的项目中，此处将使用以下语法引入CHANGELOG.md内容:
+{%- include-markdown "./_includes/history.md" %}
+-->

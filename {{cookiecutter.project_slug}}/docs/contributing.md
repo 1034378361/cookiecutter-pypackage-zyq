@@ -83,6 +83,8 @@ CI将自动构建并发布到PyPI。
 
 ## 详细贡献指南
 
-{%
-  include-markdown "./_includes/contributing.md"
-%}
+<!--
+此处将包含详细的贡献指南内容。
+生成的项目中，此处将使用以下语法引入CONTRIBUTING.md内容:
+{%- include-markdown "./_includes/contributing.md" %}
+-->

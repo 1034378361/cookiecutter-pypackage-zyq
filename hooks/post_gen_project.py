@@ -18,6 +18,48 @@ def normalize_gitattributes():
         print("已规范化 .gitattributes 行尾")
 
 
+def restore_mkdocs_syntax():
+    """恢复MkDocs特殊语法，将HTML注释替换回原始语法。"""
+    # 要处理的文件列表
+    files_to_process = [
+        pathlib.Path('docs', 'history.md'),
+        pathlib.Path('docs', 'contributing.md'),
+        pathlib.Path('docs', 'api', 'index.md'),
+        pathlib.Path('docs', '_includes', 'history.md'),
+        pathlib.Path('docs', '_includes', 'contributing.md'),
+        pathlib.Path('docs', '_includes', 'index.md'),
+        pathlib.Path('docs', '_includes', 'changelog.md')
+    ]
+
+    # 替换模式
+    include_markdown_pattern = re.compile(
+        r'<!--\s*.*此处.*include-markdown\s*"([^"]+)".*\s*-->'
+    )
+
+    # 处理每个文件
+    for file_path in files_to_process:
+        if file_path.exists():
+            content = file_path.read_text()
+
+            # 替换include-markdown注释
+            content = include_markdown_pattern.sub(
+                r'{%\n  include-markdown "\1"\n%}',
+                content
+            )
+
+            # 替换API文档中的:::注释
+            if 'api' in str(file_path):
+                content = re.sub(
+                    r'<!--\s*.*此处.*MkDocs插件显示.*API文档:?\s*:::\s*([^\n]+)\s*-->',
+                    r'::: \1',
+                    content
+                )
+
+            # 写入修改后的内容
+            file_path.write_text(content)
+            print(f"已恢复MkDocs语法: {file_path}")
+
+
 if __name__ == '__main__':
 
     if '{{ cookiecutter.create_author_file }}' != 'y':
@@ -416,4 +458,5 @@ if __name__ == '__main__':
             if not any(cursor_dir.iterdir()):
                 cursor_dir.rmdir()
 
-    print("项目'{{ cookiecutter.project_name }}'已创建完成!")
+    # 恢复MkDocs特殊语法
+    restore_mkdocs_syntax()
