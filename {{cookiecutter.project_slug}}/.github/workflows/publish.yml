@@ -21,8 +21,8 @@ jobs:
     name: 生成变更日志
     runs-on: ubuntu-latest
     outputs:
-      release_notes: ${{ '{{' }} steps.get_changelog.outputs.release_notes {{ '}}' }}
-      version: ${{ '{{' }} steps.get_version.outputs.version {{ '}}' }}
+      release_notes: ${{ '${{' }} steps.get_changelog.outputs.release_notes {{ '}}' }}
+      version: ${{ '${{' }} steps.get_version.outputs.version {{ '}}' }}
 
     steps:
     - uses: actions/checkout@v4.2.2
@@ -44,11 +44,11 @@ jobs:
     - name: 获取版本号
       id: get_version
       run: |
-        if [[ "${{ '{{' }} github.event_name {{ '}}' }}" == "push" ]]; then
+        if [[ "${{ '${{' }} github.event_name {{ '}}' }}" == "push" ]]; then
           VERSION=${GITHUB_REF#refs/tags/v}
         else
-          VERSION=${{ '{{' }} github.event.inputs.version {{ '}}' }}
-          if [[ "${{ '{{' }} github.event.inputs.tag {{ '}}' }}" == "true" ]]; then
+          VERSION=${{ '${{' }} github.event.inputs.version {{ '}}' }}
+          if [[ "${{ '${{' }} github.event.inputs.tag {{ '}}' }}" == "true" ]]; then
             git config --local user.name "GitHub Action"
             git config --local user.email "action@github.com"
             git tag -a "v${VERSION}" -m "Release v${VERSION}"
@@ -59,7 +59,7 @@ jobs:
 
     - name: 生成CHANGELOG
       run: |
-        CURRENT_TAG="v${{ '{{' }} steps.get_version.outputs.version {{ '}}' }}"
+        CURRENT_TAG="v${{ '${{' }} steps.get_version.outputs.version {{ '}}' }}"
         PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
 
         if [ ! -z "$PREV_TAG" ]; then
@@ -74,7 +74,7 @@ jobs:
         if [ -f RELEASE_NOTES.md ]; then
           sed '1,2d' RELEASE_NOTES.md > RELEASE_NOTES_CLEAN.md
         else
-          echo "Release v${{ '{{' }} steps.get_version.outputs.version {{ '}}' }}" > RELEASE_NOTES_CLEAN.md
+          echo "Release v${{ '${{' }} steps.get_version.outputs.version {{ '}}' }}" > RELEASE_NOTES_CLEAN.md
         fi
 
         NOTES=$(cat RELEASE_NOTES_CLEAN.md)
@@ -104,7 +104,7 @@ jobs:
 
     - name: 构建包
       env:
-        VERSION: ${{ '{{' }} needs.changelog.outputs.version {{ '}}' }}
+        VERSION: ${{ '${{' }} needs.changelog.outputs.version {{ '}}' }}
       run: |
         python -m build
 
@@ -112,14 +112,14 @@ jobs:
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
-        password: ${{ '{{' }} secrets.PYPI_API_TOKEN {{ '}}' }}
+        password: ${{ '${{' }} secrets.PYPI_API_TOKEN {{ '}}' }}
 
     - name: 创建GitHub Release
       uses: softprops/action-gh-release@v2.2.2
       with:
-        tag_name: v${{ '{{' }} needs.changelog.outputs.version {{ '}}' }}
-        name: Release v${{ '{{' }} needs.changelog.outputs.version {{ '}}' }}
-        body: ${{ '{{' }} needs.changelog.outputs.release_notes {{ '}}' }}
+        tag_name: v${{ '${{' }} needs.changelog.outputs.version {{ '}}' }}
+        name: Release v${{ '${{' }} needs.changelog.outputs.version {{ '}}' }}
+        body: ${{ '${{' }} needs.changelog.outputs.release_notes {{ '}}' }}
         files: dist/*
       env:
-        GITHUB_TOKEN: ${{ '{{' }} secrets.GITHUB_TOKEN {{ '}}' }}
+        GITHUB_TOKEN: ${{ '${{' }} secrets.GITHUB_TOKEN {{ '}}' }}

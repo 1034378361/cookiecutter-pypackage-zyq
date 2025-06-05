@@ -24,7 +24,7 @@ jobs:
     - name: 设置Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: ${{ '{{' }} github.event.inputs.python-version || '3.12' {{ '}}' }}
+        python-version: ${{ '${{' }} github.event.inputs.python-version || '3.12' {{ '}}' }}
         cache: pip
 
     - name: 安装依赖
@@ -75,7 +75,7 @@ jobs:
     #   if: always()
     #   uses: rtCamp/action-slack-notify@v2
     #   env:
-    #     SLACK_WEBHOOK: ${{ '{{' }} secrets.SLACK_WEBHOOK {{ '}}' }}
+    #     SLACK_WEBHOOK: ${{ '${{' }} secrets.SLACK_WEBHOOK {{ '}}' }}
     #     SLACK_TITLE: "类型检查报告"
     #     SLACK_MESSAGE: "类型检查已完成，可以在Actions中下载报告。"
-    #     SLACK_COLOR: ${{ '{{' }} job.status {{ '}}' }}
+    #     SLACK_COLOR: ${{ '${{' }} job.status {{ '}}' }}
