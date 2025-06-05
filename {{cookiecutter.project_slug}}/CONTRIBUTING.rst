@@ -92,6 +92,8 @@ Ready to contribute? Here's how to set up `{{ cookiecutter.project_slug }}` for 
     $ git commit -m "Your detailed description of your changes."
     $ git push origin name-of-your-bugfix-or-feature
 
+   请遵循我们的`提交消息规范 <./COMMIT_CONVENTION.md>`_，以确保变更日志能够正确生成。
+
 7. Submit a pull request through the GitHub website.
 
 Pull Request Guidelines

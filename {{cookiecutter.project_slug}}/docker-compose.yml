@@ -1,0 +1,48 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: {{cookiecutter.project_slug}}:latest
+    container_name: {{cookiecutter.project_slug}}
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    # 健康检查
+    healthcheck:
+      test: {% if cookiecutter.command_line_interface.lower() != 'no command-line interface' %}["CMD", "{{cookiecutter.project_slug}}", "--version"]{% else %}["CMD", "python", "-c", "from {{cookiecutter.project_slug}} import __version__; print(__version__)"]{% endif %}
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    # 安全设置
+    security_opt:
+      - no-new-privileges:true
+    # 如果是命令行工具，可以取消下面的注释并调整命令
+    # command: ["--config", "/app/config/config.yml"]
+
+  # 示例: 如果你的应用需要数据库
+  # db:
+  #   image: postgres:16-bookworm
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=postgres
+  #     - POSTGRES_DB={{cookiecutter.project_slug}}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+  #     start_period: 10s
+
+# 如使用数据库，取消下面的注释
+# volumes:
+#   postgres_data:

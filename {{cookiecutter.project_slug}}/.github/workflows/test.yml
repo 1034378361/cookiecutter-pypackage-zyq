@@ -1,0 +1,120 @@
+name: 测试
+
+# 触发条件：推送到主分支、PR到主分支，或手动触发
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: 'Python版本'
+        required: false
+        default: '3.9'
+        type: string
+
+jobs:
+  test:
+    name: 测试 Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+
+    steps:
+    - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0  # 获取所有历史以便访问标签
+
+    - name: 设置Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: 运行测试
+      run: |
+        pytest --cov=src --cov-report=term --cov-report=xml --cov-fail-under=85 tests/
+
+    - name: 上传测试覆盖率报告
+      uses: codecov/codecov-action@v3.1.4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.xml
+        fail_ci_if_error: false
+
+  lint:
+    name: 代码质量检查
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+
+    - name: 设置Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: "3.12"
+        cache: pip
+
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: 代码风格检查
+      run: |
+        ruff check .
+        ruff format --check .
+        black --check .
+        isort --check .
+
+  type-check:
+    name: 类型检查
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+
+    - name: 设置Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: "3.12"
+        cache: pip
+
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e ".[dev]"
+
+    - name: 类型检查
+      run: |
+        # 运行严格模式的类型检查
+        mypy --config-file pyproject.toml \
+          --show-error-codes \
+          --pretty \
+          --warn-redundant-casts \
+          --warn-unused-ignores \
+          --warn-unreachable \
+          src/
+
+        # 生成HTML报告（可选）
+        # mypy --config-file pyproject.toml \
+        #   --html-report mypy-report \
+        #   src/
+
+    # 上传类型检查报告（可选）
+    # - name: 上传类型检查报告
+    #   uses: actions/upload-artifact@v4.6.2
+    #   with:
+    #     name: mypy-report
+    #     path: mypy-report/
+    #     retention-days: 7

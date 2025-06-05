@@ -20,7 +20,9 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../src'))
 
+# Import package to get version info
 import {{ cookiecutter.project_slug }}
 
 # -- General configuration ---------------------------------------------
@@ -31,7 +33,39 @@ import {{ cookiecutter.project_slug }}
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
+    'sphinx_autodoc_typehints',
+]
+
+# 自动API文档生成配置
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'special-members': '__init__',
+    'undoc-members': True,
+    'exclude-members': '__weakref__'
+}
+
+# 类型提示配置
+typehints_document_rtype = True
+typehints_fully_qualified = False
+always_document_param_types = True
+
+# Napoleon配置
+napoleon_use_ivar = True
+napoleon_use_rtype = False
+napoleon_use_param = True
+
+# Intersphinx配置
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
+    'pandas': ('https://pandas.pydata.org/docs', None),
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -83,13 +117,19 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'navigation_depth': 4,
+    'collapse_navigation': False,
+    'sticky_navigation': True,
+    'includehidden': True,
+    'titles_only': False
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -157,6 +197,33 @@ texinfo_documents = [
      'One line description of project.',
      'Miscellaneous'),
 ]
+
+
+# -- 自动API文档生成 --------------------------------------------------
+
+def run_apidoc(_):
+    """为项目自动生成API文档"""
+    from sphinx.ext.apidoc import main
+    import os
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    cur_dir = os.path.abspath(os.path.dirname(__file__))
+    src_dir = os.path.join(cur_dir, '..', 'src', '{{ cookiecutter.project_slug }}')
+    apidoc_dir = os.path.join(cur_dir, 'api')
+    os.makedirs(apidoc_dir, exist_ok=True)
+
+    main([
+        '-f',  # 强制覆盖现有文件
+        '-e',  # 单独文档
+        '-o', apidoc_dir,  # 输出目录
+        src_dir,  # 源码目录
+        os.path.join(src_dir, 'tests'),  # 排除测试目录
+        '**/migrations',  # 排除迁移文件
+    ])
+
+def setup(app):
+    """设置Sphinx应用程序钩子"""
+    app.connect('builder-inited', run_apidoc)
 
 
 
