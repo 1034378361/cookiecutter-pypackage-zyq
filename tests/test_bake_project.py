@@ -1,6 +1,9 @@
 #!/usr/bin/env python
-"""测试使用cookiecutter-pypackage模板创建项目的基本功能。"""
+"""测试cookiecutter-pypackage模板的核心功能。"""
 import os
+import sys
+import subprocess
+from pathlib import Path
 import pytest
 from contextlib import contextmanager
 from cookiecutter.utils import rmtree
@@ -23,66 +26,237 @@ def inside_dir(dirpath):
 def bake_in_temp_dir(cookies, *args, **kwargs):
     """
     在临时目录中创建项目，并提供进入项目目录的上下文管理器。
+    在CI环境中保留临时目录用于调试，本地环境自动清理。
     """
     result = cookies.bake(*args, **kwargs)
+    if result.exception is not None:
+        # 如果bake出错，直接抛出异常，而不是返回失败的结果
+        raise result.exception
+
     try:
         yield result
     finally:
-        if result.exception is None:
-            # 成功烘焙后清理
-            # 在CI中最好保留目录以便进一步调试
-            if os.environ.get('CI') != 'true':
-                rmtree(str(result.project_path))
+        if os.environ.get('CI') != 'true':  # 仅在非CI环境中清理
+            rmtree(str(result.project_path))
 
 
-def test_bake_with_defaults(cookies):
-    """测试使用默认配置烘焙项目。"""
-    try:
+def run_command(command, cwd=None):
+    """运行shell命令并返回结果"""
+    return subprocess.run(
+        command,
+        shell=True,
+        check=False,  # 不自动抛出异常
+        capture_output=True,
+        text=True,
+        cwd=cwd
+    )
+
+
+class TestBasicFunctionality:
+    """测试模板的基本功能。"""
+
+    def test_project_directory_structure(self, cookies):
+        """测试生成项目的目录结构。"""
         with bake_in_temp_dir(cookies) as result:
-            assert result.exit_code == 0
-            assert result.exception is None
+            # 核心目录和文件必须存在
             assert result.project_path.is_dir()
-    except Exception as e:
-        pytest.skip(f"烘焙测试跳过，可能缺少依赖: {str(e)}")
+            assert (result.project_path / "src").is_dir()
+            assert (result.project_path / "tests").is_dir()
+            assert (result.project_path / "docs").is_dir()
+            assert (result.project_path / "pyproject.toml").is_file()
+            assert (result.project_path / "README.rst").is_file()
+
+    def test_python_version_config(self, cookies):
+        """测试Python版本配置正确应用于所有相关文件。"""
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"python_min_version": "3.9"}
+        ) as result:
+            # 检查pyproject.toml中的Python版本设置
+            pyproject_content = (result.project_path / "pyproject.toml").read_text()
+            assert 'requires-python = ">=3.9"' in pyproject_content
+            # 检查Dockerfile中的Python版本
+            dockerfile_content = (result.project_path / "Dockerfile").read_text()
+            assert 'FROM python:3.9-slim-bookworm' in dockerfile_content
+
+    def test_license_generation(self, cookies):
+        """测试许可证文件正确生成。"""
+        # 测试MIT许可证
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"open_source_license": "MIT license"}
+        ) as result:
+            license_file = result.project_path / "LICENSE"
+            assert license_file.is_file()
+            content = license_file.read_text()
+            assert "MIT License" in content
+
+        # 测试BSD许可证
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"open_source_license": "BSD license"}
+        ) as result:
+            license_file = result.project_path / "LICENSE"
+            assert license_file.is_file()
+            content = license_file.read_text()
+            assert "BSD " in content
+
+    def test_no_license_option(self, cookies):
+        """测试选择不开源时LICENSE文件不存在。"""
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"open_source_license": "Not open source"}
+        ) as result:
+            assert not (result.project_path / "LICENSE").exists()
 
 
-def test_make_help(cookies):
-    """测试生成的Makefile包含帮助目标。"""
-    try:
+class TestProjectConfiguration:
+    """测试项目配置选项。"""
+
+    def test_cli_options(self, cookies):
+        """测试CLI选项正确应用。"""
+        # 测试无CLI接口
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"command_line_interface": "No command-line interface"}
+        ) as result:
+            assert not (result.project_path / "src" / "python_test" / "cli.py").exists()
+
+        # 测试Typer CLI接口
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={
+                "command_line_interface": "Typer",
+                "project_slug": "cli_test"
+            }
+        ) as result:
+            cli_file = result.project_path / "src" / "cli_test" / "cli.py"
+            assert cli_file.exists()
+            assert "import typer" in cli_file.read_text()
+
+        # 测试Argparse CLI接口
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={
+                "command_line_interface": "Argparse",
+                "project_slug": "arg_test"
+            }
+        ) as result:
+            cli_file = result.project_path / "src" / "arg_test" / "cli.py"
+            assert cli_file.exists()
+            assert "import argparse" in cli_file.read_text()
+
+    def test_dependency_options(self, cookies):
+        """测试可选依赖正确应用。"""
+        # 测试包含Rich
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"dependency_rich": "y"}
+        ) as result:
+            pyproject = result.project_path / "pyproject.toml"
+            assert '"rich>=' in pyproject.read_text()
+
+        # 测试不包含Rich
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"dependency_rich": "n"}
+        ) as result:
+            pyproject = result.project_path / "pyproject.toml"
+            assert '"rich>=' not in pyproject.read_text()
+
+
+class TestGitHubIntegration:
+    """测试GitHub集成功能。"""
+
+    def test_github_actions_configuration(self, cookies):
+        """测试GitHub Actions配置。"""
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_github_actions": "y"}
+        ) as result:
+            actions_dir = result.project_path / ".github" / "workflows"
+            assert actions_dir.is_dir()
+            assert (actions_dir / "test.yml").is_file()
+            assert (actions_dir / "publish.yml").is_file()
+
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_github_actions": "n"}
+        ) as result:
+            actions_dir = result.project_path / ".github" / "workflows"
+            assert not actions_dir.exists()
+
+    def test_dependabot_configuration(self, cookies):
+        """测试Dependabot配置。"""
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_dependabot": "y"}
+        ) as result:
+            dependabot_file = result.project_path / ".github" / "dependabot.yml"
+            assert dependabot_file.is_file()
+
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_dependabot": "n"}
+        ) as result:
+            dependabot_file = result.project_path / ".github" / "dependabot.yml"
+            assert not dependabot_file.exists()
+
+
+class TestDockerSupport:
+    """测试Docker支持。"""
+
+    def test_dockerfile_generation(self, cookies):
+        """测试Dockerfile生成。"""
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_docker": "y"}
+        ) as result:
+            dockerfile = result.project_path / "Dockerfile"
+            compose_file = result.project_path / "docker-compose.yml"
+            assert dockerfile.is_file()
+            assert compose_file.is_file()
+
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_docker": "n"}
+        ) as result:
+            dockerfile = result.project_path / "Dockerfile"
+            compose_file = result.project_path / "docker-compose.yml"
+            assert not dockerfile.exists()
+            assert not compose_file.exists()
+
+
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="Make不支持Windows")
+class TestMakeCommands:
+    """测试Makefile命令（Unix环境）。"""
+
+    def test_make_help(self, cookies):
+        """测试make help命令。"""
         with bake_in_temp_dir(cookies) as result:
-            if result.exception is not None:
-                pytest.skip(f"烘焙失败，跳过测试: {result.exception}")
-
-            # 检查Makefile是否存在
-            assert result.project_path.joinpath('Makefile').exists()
-
             with inside_dir(str(result.project_path)):
-                # 简单检查，不执行make命令
-                makefile_content = result.project_path.joinpath('Makefile').read_text()
-                assert 'help:' in makefile_content, "Makefile应该包含help目标"
-    except Exception as e:
-        pytest.skip(f"测试跳过: {str(e)}")
+                output = run_command("make help")
+                assert output.returncode == 0
+                assert "help" in output.stdout
 
 
-def test_project_tree(cookies):
-    """测试项目树结构包含预期的文件和目录。"""
-    try:
-        with bake_in_temp_dir(cookies) as result:
-            if result.exception is not None:
-                pytest.skip(f"烘焙失败，跳过测试: {result.exception}")
+class TestUtilsLibrary:
+    """测试工具库功能。"""
 
-            expected_files = [
-                'README.rst',
-                'pyproject.toml',
-                '.github',
-                'src',
-                'tests',
-                'docs',
-            ]
+    def test_utils_library_option(self, cookies):
+        """测试工具库选项。"""
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_utils_lib": "y", "project_slug": "with_utils"}
+        ) as result:
+            utils_dir = result.project_path / "src" / "with_utils" / "utils"
+            assert utils_dir.is_dir()
+            assert (utils_dir / "file_utils.py").is_file()
 
-            for expected_file in expected_files:
-                path = result.project_path.joinpath(expected_file)
-                assert path.exists(), f"项目应该包含 {expected_file}"
-    except Exception as e:
-        pytest.skip(f"测试跳过: {str(e)}")
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"include_utils_lib": "n", "project_slug": "no_utils"}
+        ) as result:
+            utils_dir = result.project_path / "src" / "no_utils" / "utils"
+            assert not utils_dir.exists()
 
