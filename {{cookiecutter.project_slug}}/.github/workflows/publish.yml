@@ -1,0 +1,143 @@
+name: 发布到PyPI
+
+# 触发条件：发布标签或手动触发
+on:
+  push:
+    tags:
+      - "v*"  # 推送以v开头的标签时触发，如v1.0.0
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 (如 1.0.0)'
+        required: true
+        type: string
+      tag:
+        description: '是否创建标签'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  # 生成变更日志
+  changelog:
+    name: 生成变更日志
+    runs-on: ubuntu-latest
+    outputs:
+      release_notes: ${{ steps.get_changelog.outputs.release_notes }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+    - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    # 安装依赖
+    - name: 设置Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: '3.x'
+        cache: pip
+
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install gitpython
+
+    # 根据不同触发方式获取版本号
+    - name: 获取版本号
+      id: get_version
+      run: |
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          # 从标签名提取版本号
+          VERSION=${GITHUB_REF#refs/tags/v}
+        else
+          # 使用手动输入的版本号
+          VERSION=${{ github.event.inputs.version }}
+
+          # 如果需要创建标签
+          if [[ "${{ github.event.inputs.tag }}" == "true" ]]; then
+            git config --local user.name "GitHub Action"
+            git config --local user.email "action@github.com"
+            git tag -a "v${VERSION}" -m "Release v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
+        fi
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+    # 使用我们的CHANGELOG脚本生成变更日志
+    - name: 生成CHANGELOG
+      run: |
+        # 查找当前标签和上一个标签
+        CURRENT_TAG="v${{ steps.get_version.outputs.version }}"
+        PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
+
+        # 如果有上一个标签，则生成两个标签之间的变更日志
+        if [ ! -z "$PREV_TAG" ]; then
+          python scripts/generate_changelog.py --since $PREV_TAG --until $CURRENT_TAG --output RELEASE_NOTES.md
+        else
+          # 否则生成完整的变更日志
+          python scripts/generate_changelog.py --until $CURRENT_TAG --output RELEASE_NOTES.md
+        fi
+
+    # 提取发布说明
+    - name: 获取发布说明
+      id: get_changelog
+      run: |
+        if [ -f RELEASE_NOTES.md ]; then
+          # 去掉标题行
+          sed '1,2d' RELEASE_NOTES.md > RELEASE_NOTES_CLEAN.md
+        else
+          # 如果没有生成文件，使用一个默认的发布说明
+          echo "Release v${{ steps.get_version.outputs.version }}" > RELEASE_NOTES_CLEAN.md
+        fi
+
+        # 读取发布说明
+        NOTES=$(cat RELEASE_NOTES_CLEAN.md)
+        echo "release_notes<<EOF" >> $GITHUB_OUTPUT
+        echo "$NOTES" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+  # 构建和发布
+  deploy:
+    name: 构建和发布
+    needs: changelog
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+
+    - name: 设置Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: "3.9"
+
+    - name: 安装依赖
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: 构建包
+      env:
+        VERSION: ${{ needs.changelog.outputs.version }}
+      run: |
+        # 使用环境变量设置版本号
+        python -m build
+
+    - name: 发布到PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+
+    - name: 创建GitHub Release
+      uses: softprops/action-gh-release@v2.2.2
+      with:
+        tag_name: v${{ needs.changelog.outputs.version }}
+        name: Release v${{ needs.changelog.outputs.version }}
+        body: ${{ needs.changelog.outputs.release_notes }}
+        files: dist/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

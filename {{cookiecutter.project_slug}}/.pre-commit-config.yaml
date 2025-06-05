@@ -1,0 +1,72 @@
+repos:
+# 基本格式检查
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: 5.0.0
+  hooks:
+    - id: check-yaml
+    - id: check-json
+    - id: check-toml
+    - id: check-added-large-files
+    - id: end-of-file-fixer
+    - id: trailing-whitespace
+    - id: check-ast
+    - id: check-merge-conflict
+    - id: debug-statements
+    - id: check-executables-have-shebangs
+    - id: fix-byte-order-marker
+    - id: detect-private-key
+    - id: detect-aws-credentials
+
+# Python代码静态检查
+- repo: https://github.com/astral-sh/ruff-pre-commit
+  rev: 0.11.12
+  hooks:
+    # 运行linter
+    - id: ruff-check
+      args: ["--fix"]
+    # 运行格式化器
+    - id: ruff-format
+
+# Python代码格式化
+- repo: https://github.com/psf/black
+  rev: 25.1.0
+  hooks:
+    - id: black
+      language_version: python3
+      args: ["--line-length", "88"]
+
+# 导入排序
+- repo: https://github.com/pycqa/isort
+  rev: 6.0.1
+  hooks:
+    - id: isort
+      args: ["--profile", "black", "--filter-files"]
+
+# 类型检查
+- repo: https://github.com/pre-commit/mirrors-mypy
+  rev: v1.16.0
+  hooks:
+    - id: mypy
+      additional_dependencies: ["types-PyYAML", "types-requests"]
+      args: ["--ignore-missing-imports", "--disallow-untyped-defs", "--disallow-incomplete-defs"]
+
+# 安全漏洞检查
+- repo: https://github.com/PyCQA/bandit
+  rev: 1.8.3
+  hooks:
+    - id: bandit
+      args: [
+        "-c", "pyproject.toml",
+        "--recursive",
+        "--confidence-level", "medium",
+        "--severity-level", "medium",
+        "--exclude", "tests,docs",
+      ]
+      additional_dependencies: ["bandit[toml]"]
+
+# 依赖项安全检查
+- repo: https://github.com/pyupio/safety
+  rev: 3.5.2
+  hooks:
+    - id: safety
+      args: ["check", "--full-report", "--disable-optional-telemetry"]
