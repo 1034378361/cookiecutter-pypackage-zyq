@@ -1,9 +1,8 @@
 name: 深度类型检查
 
-# 触发条件：每周一运行一次，或手动触发
 on:
   schedule:
-    - cron: '0 0 * * 1'  # 每周一UTC时间0点
+    - cron: '0 0 * * 1'
   workflow_dispatch:
     inputs:
       python-version:
@@ -35,10 +34,8 @@ jobs:
 
     - name: 运行完整类型检查
       run: |
-        # 创建输出目录
         mkdir -p mypy-report
 
-        # 运行严格模式的类型检查并生成报告
         mypy --config-file pyproject.toml \
           --show-error-codes \
           --pretty \
@@ -49,7 +46,6 @@ jobs:
           --txt-report mypy-report \
           src/
 
-        # 统计类型覆盖率
         echo "类型覆盖率报告:" > mypy-report/coverage.txt
         mypy --config-file pyproject.toml \
           --no-error-summary \
@@ -59,7 +55,6 @@ jobs:
 
         grep "Statement coverage:" mypy-report/details/index.txt >> mypy-report/coverage.txt
 
-        # 创建概述文件
         echo "# 类型检查报告" > mypy-report/summary.md
         echo "生成时间: $(date)" >> mypy-report/summary.md
         echo "" >> mypy-report/summary.md

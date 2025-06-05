@@ -2,16 +2,13 @@ name: 自动更新CHANGELOG
 
 on:
   push:
-    # 当推送新标签时触发
     tags:
       - 'v*'
-  # 当PR合并到主分支时触发
   pull_request:
     types: [closed]
     branches:
       - main
       - master
-  # 允许手动触发
   workflow_dispatch:
     inputs:
       mode:
@@ -30,23 +27,17 @@ on:
 
 jobs:
   update-changelog:
-    # 仅在以下情况运行:
-    # 1. 标签推送
-    # 2. PR被合并(而非仅关闭)
-    # 3. 手动触发
     if: >
-      github.event_name == 'push' ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
-      github.event_name == 'workflow_dispatch'
+      ${{ github.event_name }} == 'push' ||
+      (${{ github.event_name }} == 'pull_request' && ${{ github.event.pull_request.merged }} == true) ||
+      ${{ github.event_name }} == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4.2.2
         with:
-          # 获取完整历史以便生成CHANGELOG
           fetch-depth: 0
-          # 获取标签信息
           fetch-tags: true
 
       - name: 设置Python
@@ -64,29 +55,23 @@ jobs:
         id: config
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
-            # 标签事件 - 增量更新
             echo "mode=incremental" >> $GITHUB_OUTPUT
             echo "commit_message=更新 CHANGELOG ${{ github.ref_name }}" >> $GITHUB_OUTPUT
             echo "config_file=.changelog.yml" >> $GITHUB_OUTPUT
           elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            # PR合并事件 - 增量更新未发布部分
             echo "mode=incremental" >> $GITHUB_OUTPUT
             echo "commit_message=更新 CHANGELOG (PR #${{ github.event.pull_request.number }})" >> $GITHUB_OUTPUT
             echo "config_file=.changelog.yml" >> $GITHUB_OUTPUT
           else
-            # 手动触发 - 用户选择的模式
             echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
             echo "commit_message=手动更新 CHANGELOG" >> $GITHUB_OUTPUT
             echo "config_file=${{ github.event.inputs.config }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: 更新CHANGELOG
         run: |
           if [ "${{ steps.config.outputs.mode }}" == "full" ]; then
-            # 生成完整历史
             python scripts/generate_changelog.py --since $(git rev-list --max-parents=0 HEAD) --config "${{ steps.config.outputs.config_file }}"
           else
-            # 增量更新
             python scripts/generate_changelog.py --config "${{ steps.config.outputs.config_file }}"
           fi
 

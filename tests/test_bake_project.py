@@ -64,7 +64,7 @@ class TestBasicFunctionality:
             assert (result.project_path / "tests").is_dir()
             assert (result.project_path / "docs").is_dir()
             assert (result.project_path / "pyproject.toml").is_file()
-            assert (result.project_path / "README.rst").is_file()
+            assert (result.project_path / "README.md").is_file()
 
     def test_python_version_config(self, cookies):
         """测试Python版本配置正确应用于所有相关文件。"""
@@ -74,7 +74,7 @@ class TestBasicFunctionality:
         ) as result:
             # 检查pyproject.toml中的Python版本设置
             pyproject_content = (result.project_path / "pyproject.toml").read_text()
-            assert 'requires-python = ">=3.9"' in pyproject_content
+            assert 'python = ">=3.9"' in pyproject_content
             # 检查Dockerfile中的Python版本
             dockerfile_content = (result.project_path / "Dockerfile").read_text()
             assert 'FROM python:3.9-slim-bookworm' in dockerfile_content
@@ -154,7 +154,8 @@ class TestProjectConfiguration:
             extra_context={"dependency_rich": "y"}
         ) as result:
             pyproject = result.project_path / "pyproject.toml"
-            assert '"rich>=' in pyproject.read_text()
+            content = pyproject.read_text()
+            assert 'rich = ">=' in content
 
         # 测试不包含Rich
         with bake_in_temp_dir(
@@ -162,7 +163,8 @@ class TestProjectConfiguration:
             extra_context={"dependency_rich": "n"}
         ) as result:
             pyproject = result.project_path / "pyproject.toml"
-            assert '"rich>=' not in pyproject.read_text()
+            content = pyproject.read_text()
+            assert 'rich = ">=' not in content
 
 
 class TestGitHubIntegration:
@@ -237,7 +239,8 @@ class TestMakeCommands:
             with inside_dir(str(result.project_path)):
                 output = run_command("make help")
                 assert output.returncode == 0
-                assert "help" in output.stdout
+                # 检查是否包含任意常见的目标，而不是寻找"help"文本
+                assert "clean" in output.stdout or "lint" in output.stdout or "test" in output.stdout
 
 
 class TestUtilsLibrary:

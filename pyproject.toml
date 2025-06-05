@@ -1,0 +1,66 @@
+[tool]
+[tool.poetry]
+name = "cookiecutter-pypackage"
+version = "0.1.0"
+description = "Cookiecutter template for a Python package"
+license = "BSD"
+authors = ["Audrey M. Roy Greenfeld <audrey@feldroy.com>"]
+readme = "README.rst"
+repository = "https://github.com/audreyfeldroy/cookiecutter-pypackage"
+documentation = "https://cookiecutter-pypackage.readthedocs.io/"
+keywords = ['cookiecutter', 'template', 'package']
+
+include = [
+  '{{cookiecutter.project_slug}}/**/*',
+  'cookiecutter.json',
+  'hooks/*'
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+cookiecutter = ">=2.1.1"
+
+pytest = {version = ">=7.0.0", optional=true}
+pytest-cookies = {version = ">=0.7.0", optional=true}
+pyyaml = {version = ">=6.0", optional=true}
+sphinx = {version = ">=7.0.0", optional=true}
+sphinx-rtd-theme = {version = ">=2.0.0", optional=true}
+pytest-cov = {version = ">=4.1.0", optional=true}
+tox = {version = ">=4.0.0", optional=true}
+black = {version = ">=23.0.0", optional=true}
+isort = {version = ">=5.12.0", optional=true}
+
+[tool.poetry.extras]
+dev = [
+  "pytest",
+  "pytest-cookies",
+  "pyyaml",
+  "sphinx",
+  "sphinx-rtd-theme",
+  "pytest-cov",
+  "tox",
+  "black",
+  "isort"
+]
+
+[tool.black]
+line-length = 88
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
