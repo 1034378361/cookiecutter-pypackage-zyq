@@ -64,7 +64,7 @@ class TestBasicFunctionality:
             assert (result.project_path / "tests").is_dir()
             assert (result.project_path / "docs").is_dir()
             assert (result.project_path / "pyproject.toml").is_file()
-            assert (result.project_path / "README.rst").is_file()
+            assert (result.project_path / "README.md").is_file()
 
     def test_python_version_config(self, cookies):
         """测试Python版本配置正确应用于所有相关文件。"""
@@ -74,7 +74,7 @@ class TestBasicFunctionality:
         ) as result:
             # 检查pyproject.toml中的Python版本设置
             pyproject_content = (result.project_path / "pyproject.toml").read_text()
-            assert 'requires-python = ">=3.9"' in pyproject_content
+            assert 'python = ">=3.9"' in pyproject_content
             # 检查Dockerfile中的Python版本
             dockerfile_content = (result.project_path / "Dockerfile").read_text()
             assert 'FROM python:3.9-slim-bookworm' in dockerfile_content

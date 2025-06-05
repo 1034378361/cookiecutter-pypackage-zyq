@@ -326,7 +326,7 @@ if __name__ == '__main__':
       id: generate_notes
       run: |
         # 查找最近两个标签
-        CURRENT_TAG="v${{{{ steps.get_version.outputs.version }}}}"
+        {% raw %}CURRENT_TAG="v${{ steps.get_version.outputs.version }}"
         PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${CURRENT_TAG}$" | head -n 1)
 
         # 如果没有之前的标签，使用第一个提交
@@ -343,7 +343,7 @@ if __name__ == '__main__':
         NOTES=$(cat RELEASE_NOTES.md)
         echo "release_notes<<EOF" >> $GITHUB_OUTPUT
         echo "$NOTES" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT''',
+        echo "EOF" >> $GITHUB_OUTPUT{% endraw %}''',
                 content
             )
 
