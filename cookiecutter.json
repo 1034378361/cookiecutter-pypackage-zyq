@@ -24,5 +24,6 @@
   "dependency_rich": "y",
   "include_utils_lib": "y",
   "include_version_management": "y",
-  "__gh_slug": "{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}"
+  "__gh_slug": "{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}",
+  "_copy_without_render": [".github/workflows/*.yml", "docs/_includes/*.md"]
 }

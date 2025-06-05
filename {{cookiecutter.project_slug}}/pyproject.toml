@@ -1,18 +1,15 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "{{cookiecutter.project_slug}}"
 version = "{{cookiecutter.version}}"
 description = "{{cookiecutter.project_short_description}}"
-readme = "README.rst"
+readme = "README.md"
 authors = [
-  {name = "{{cookiecutter.full_name}}", email = "{{cookiecutter.email}}"}
+  "{{cookiecutter.full_name}} <{{cookiecutter.email}}>"
 ]
 maintainers = [
-  {name = "{{cookiecutter.full_name}}", email = "{{cookiecutter.email}}"}
+  "{{cookiecutter.full_name}} <{{cookiecutter.email}}>"
 ]
+license = "{{cookiecutter.open_source_license}}"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -25,57 +22,54 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
-license = {text = "{{cookiecutter.open_source_license}}"}
-requires-python = ">={{cookiecutter.python_min_version}}"
-dependencies = [
-  {% if cookiecutter.command_line_interface.lower() == "typer" -%}
-  "typer>=0.9.0",
-  {%- endif %}
-  {% if cookiecutter.dependency_rich == 'y' -%}
-  "rich>=10.0.0",
-  {%- endif %}
-  {% if cookiecutter.dependency_pyyaml == 'y' -%}
-  "pyyaml>=6.0",
-  {%- endif %}
+packages = [
+    { include = "{{cookiecutter.project_slug}}", from = "src" }
 ]
+include = ["CHANGELOG.md"]
 
-[project.optional-dependencies]
-dev = [
-    "coverage",  # testing
-    "mypy>=1.16.0",  # linting
-    "pytest",  # testing
-    "ruff>=0.11.0",  # linting
-    "black>=25.1.0",  # formatting
-    "isort>=6.0.1",  # import sorting
-    "sphinx",  # documentation
-    "sphinx-rtd-theme",  # documentation theme
-    "sphinx-autodoc-typehints>=1.25.2",  # 类型提示支持
-    "pytest-cov",  # test coverage
-    "pre-commit>=3.6.0",  # git hooks
-    "bandit>=1.8.3",  # security checks
-    "gitpython>=3.1.40",  # git操作，用于changelog生成
-    "mypy-html>=1.4.0",  # 类型检查报告生成器
-    "types-PyYAML",  # PyYAML类型提示
-    "types-requests",  # requests类型提示
-    "types-setuptools",  # setuptools类型提示
-    "types-toml",  # toml类型提示
-]
+[tool.poetry.urls]
+"Homepage" = "https://github.com/{{cookiecutter.__gh_slug}}"
+"Bug Tracker" = "https://github.com/{{cookiecutter.__gh_slug}}/issues"
+"Documentation" = "https://{{cookiecutter.project_slug}}.readthedocs.io/"
+"Repository" = "https://github.com/{{cookiecutter.__gh_slug}}"
+"Changelog" = "https://github.com/{{cookiecutter.__gh_slug}}/blob/master/CHANGELOG.md"
 
-[project.urls]
-bugs = "https://github.com/{{cookiecutter.__gh_slug}}/issues"
-changelog = "https://github.com/{{cookiecutter.__gh_slug}}/blob/master/CHANGELOG.md"
-homepage = "https://github.com/{{cookiecutter.__gh_slug}}"
-documentation = "https://{{cookiecutter.project_slug}}.readthedocs.io/"
-repository = "https://github.com/{{cookiecutter.__gh_slug}}"
+[tool.poetry.dependencies]
+python = ">={{cookiecutter.python_min_version}}"
+{% if cookiecutter.command_line_interface.lower() == "typer" -%}
+typer = ">=0.9.0"
+{%- endif %}
+{% if cookiecutter.dependency_rich == 'y' -%}
+rich = ">=10.0.0"
+{%- endif %}
+{% if cookiecutter.dependency_pyyaml == 'y' -%}
+pyyaml = ">=6.0"
+{%- endif %}
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.package-data]
-"*" = ["*.*"]
+[tool.poetry.group.dev.dependencies]
+coverage = "*"
+mypy = ">=1.16.0"
+pytest = "*"
+ruff = ">=0.11.0"
+black = ">=25.1.0"
+isort = ">=6.0.1"
+mkdocs = ">=1.5.0"
+mkdocs-material = ">=9.4.0"
+mkdocstrings = ">=0.24.0"
+mkdocstrings-python = ">=1.8.0"
+mkdocs-git-revision-date-localized-plugin = ">=1.2.0"
+pytest-cov = "*"
+pre-commit = ">=3.6.0"
+bandit = ">=1.8.3"
+gitpython = ">=3.1.40"
+mypy-html = ">=1.4.0"
+types-PyYAML = "*"
+types-requests = "*"
+types-setuptools = "*"
+types-toml = "*"
 
 {% if cookiecutter.command_line_interface.lower() == "typer" %}
-[project.scripts]
+[tool.poetry.scripts]
 {{cookiecutter.project_slug}} = "{{cookiecutter.project_slug}}.cli:app"
 {% endif %}
 
@@ -155,4 +149,8 @@ exclude_lines = [
 [tool.bandit]
 exclude_dirs = ["tests"]
 skips = ["B311"]  # 忽略标准库伪随机数生成器警告
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 

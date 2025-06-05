@@ -1,5 +1,5 @@
 .PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 \
-	changelog changelog-init docker docker-build docker-run docker-clean
+	changelog changelog-init docker docker-build docker-run docker-clean poetry-install
 
 .DEFAULT_GOAL := help
 
@@ -50,11 +50,11 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint: ## run linters
-	ruff check src tests
-	ruff format --check src tests
-	black --check src tests
-	isort --check src tests
-	mypy src
+	poetry run ruff check src tests
+	poetry run ruff format --check src tests
+	poetry run black --check src tests
+	poetry run isort --check src tests
+	poetry run mypy src
 	# 检查调试语句
 	! grep -r "import pdb" src tests
 	! grep -r "breakpoint()" src tests
@@ -62,59 +62,58 @@ lint: ## run linters
 	! grep -r "<<<<<<< HEAD" src tests docs
 
 format: ## format code
-	ruff format src tests
-	black src tests
-	isort src tests
+	poetry run ruff format src tests
+	poetry run black src tests
+	poetry run isort src tests
 
 test: ## run tests quickly with the default Python
 {%- if cookiecutter.use_pytest == 'y' %}
-	pytest --cov=src --cov-report=term --cov-report=html --cov-fail-under=85
+	poetry run pytest --cov=src --cov-report=term --cov-report=html --cov-fail-under=85
 {%- else %}
-	python setup.py test
+	poetry run python setup.py test
 {%- endif %}
 
 test-all: ## run tests on every Python version with tox
-	tox
+	poetry run tox
 
 coverage: ## check code coverage quickly with the default Python
 {%- if cookiecutter.use_pytest == 'y' %}
-	pytest --cov=src --cov-report=term --cov-report=html --cov-fail-under=85
+	poetry run pytest --cov=src --cov-report=term --cov-report=html --cov-fail-under=85
 {%- else %}
-	coverage run --source {{ cookiecutter.project_slug }} -m pytest
-	coverage report -m --fail-under=85
-	coverage html
+	poetry run coverage run --source {{ cookiecutter.project_slug }} -m pytest
+	poetry run coverage report -m --fail-under=85
+	poetry run coverage html
 {%- endif %}
 	$(BROWSER) htmlcov/index.html
 
-docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/{{ cookiecutter.project_slug }}.rst
-	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ src/{{ cookiecutter.project_slug }}
-	$(MAKE) -C docs clean
-	$(MAKE) -C docs html
-	$(BROWSER) docs/_build/html/index.html
+docs: ## generate MkDocs documentation
+	poetry run mkdocs build
+	$(BROWSER) site/index.html
 
-servedocs: docs ## compile the docs watching for changes
-	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
+servedocs: ## serve documentation locally with live reload
+	poetry run mkdocs serve
 
 release: dist ## package and upload a release
-	twine upload dist/*
+	poetry publish
 
 dist: clean ## builds source and wheel package
-	python -m build
+	poetry build
 	ls -l dist
 
-install: clean ## install the package to the active Python's site-packages
-	pip install -e .
+install: clean ## install the package
+	poetry install
 
 dev-install: clean ## install the package and development dependencies
-	pip install -e ".[dev]"
+	poetry install --with dev
+
+poetry-install: ## install Poetry if it's not installed
+	curl -sSL https://install.python-poetry.org | python3 -
 
 changelog: ## 从最新标签开始生成CHANGELOG
-	python scripts/generate_changelog.py --config .changelog.yml --verbose
+	poetry run python scripts/generate_changelog.py --config .changelog.yml --verbose
 
 changelog-init: ## 生成完整项目历史的CHANGELOG
-	python scripts/generate_changelog.py --since $(shell git rev-list --max-parents=0 HEAD) --config .changelog.yml --verbose
+	poetry run python scripts/generate_changelog.py --since $(shell git rev-list --max-parents=0 HEAD) --config .changelog.yml --verbose
 
 {% if cookiecutter.include_docker == 'y' %}
 docker: docker-build ## alias for docker-build
