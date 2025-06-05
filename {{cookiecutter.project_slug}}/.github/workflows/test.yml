@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: 测试 Python ${{ matrix.python-version }}
+    name: 测试 Python ${{ '{{' }} matrix.python-version {{ '}}' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,10 +24,10 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: 设置 Python ${{ matrix.python-version }}
+    - name: 设置 Python ${{ '{{' }} matrix.python-version {{ '}}' }}
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ '{{' }} matrix.python-version {{ '}}' }}
         cache: pip
 
     - name: 安装依赖
@@ -43,7 +43,7 @@ jobs:
     - name: 上传测试覆盖率报告
       uses: codecov/codecov-action@v3.1.4
       with:
-        token: ${{ secrets.CODECOV_TOKEN }}
+        token: ${{ '{{' }} secrets.CODECOV_TOKEN {{ '}}' }}
         file: ./coverage.xml
         fail_ci_if_error: false
 
