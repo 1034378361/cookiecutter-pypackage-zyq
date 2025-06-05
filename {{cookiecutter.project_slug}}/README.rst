@@ -7,10 +7,7 @@
 .. image:: https://img.shields.io/pypi/v/{{ cookiecutter.project_slug }}.svg
         :target: https://pypi.python.org/pypi/{{ cookiecutter.project_slug }}
 
-{% if cookiecutter.use_pypi_deployment_with_travis == 'y' %}
-.. image:: https://img.shields.io/travis/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.svg
-        :target: https://travis-ci.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}
-{% endif %}
+{# Travis CI已弃用，使用GitHub Actions替代 #}
 
 {% if cookiecutter.include_github_actions == 'y' %}
 .. image:: https://github.com/{{ cookiecutter.__gh_slug }}/actions/workflows/test.yml/badge.svg
