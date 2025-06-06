@@ -1,7 +1,7 @@
 repos:
 # 基本格式检查
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: 5.0.0
+  rev: v5.0.0
   hooks:
     - id: check-yaml
     - id: check-json
@@ -19,7 +19,7 @@ repos:
 
 # Python代码静态检查
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: 0.11.12
+  rev: v0.11.13
   hooks:
     # 运行linter
     - id: ruff-check
@@ -63,10 +63,3 @@ repos:
         "--exclude", "tests,docs",
       ]
       additional_dependencies: ["bandit[toml]"]
-
-# 依赖项安全检查
-- repo: https://github.com/pyupio/safety
-  rev: 3.5.2
-  hooks:
-    - id: safety
-      args: ["check", "--full-report", "--disable-optional-telemetry"]

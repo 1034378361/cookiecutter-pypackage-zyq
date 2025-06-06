@@ -3,6 +3,8 @@ import os
 import pathlib
 import re
 import stat
+import subprocess
+import shutil
 
 # 确保.gitattributes在Windows和Unix系统上都使用正确的行尾规范
 def normalize_gitattributes():
@@ -462,3 +464,18 @@ if __name__ == '__main__':
 
     # 恢复MkDocs特殊语法
     # restore_mkdocs_syntax()
+
+    # 自动初始化git仓库
+    def is_git_repo(path: str) -> bool:
+        return (pathlib.Path(path) / ".git").is_dir()
+
+    if shutil.which("git") is None:
+        print("未检测到 git，请先安装 Git（https://git-scm.com/）后再使用本项目的版本控制功能。")
+    elif not is_git_repo(os.getcwd()):
+        try:
+            subprocess.run(["git", "init", "-b", "main"], check=True)
+            print("已自动初始化 git 仓库成功。")
+        except Exception as e:
+            print(f"自动初始化 git 仓库失败: {e}")
+    else:
+        print("当前目录已是 git 仓库，跳过初始化。")
