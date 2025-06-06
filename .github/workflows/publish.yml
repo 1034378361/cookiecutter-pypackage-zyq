@@ -16,6 +16,9 @@ on:
         default: true
         type: boolean
 
+permissions:
+    contents: write
+
 jobs:
   release:
     name: 创建发布版本
