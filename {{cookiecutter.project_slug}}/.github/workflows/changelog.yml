@@ -1,0 +1,95 @@
+name: 自动更新CHANGELOG
+
+on:
+  push:
+    tags:
+      - 'v*'
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '更新模式'
+        required: true
+        default: 'incremental'
+        type: choice
+        options:
+          - incremental
+          - full
+      config:
+        description: '配置文件路径 (可选)'
+        required: false
+        default: '.changelog.yml'
+        type: string
+
+jobs:
+  update-changelog:
+    if: >
+      ${{ github.event_name }} == 'push' ||
+      (${{ github.event_name }} == 'pull_request' && ${{ github.event.pull_request.merged }} == true) ||
+      ${{ github.event_name }} == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: 设置Python
+        uses: actions/setup-python@v5.6.0
+        with:
+          python-version: '3.x'
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install gitpython pyyaml
+
+      - name: 确定更新模式和提交信息
+        id: config
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "mode=incremental" >> $GITHUB_OUTPUT
+            echo "commit_message=更新 CHANGELOG ${{ github.ref_name }}" >> $GITHUB_OUTPUT
+            echo "config_file=.changelog.yml" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo "mode=incremental" >> $GITHUB_OUTPUT
+            echo "commit_message=更新 CHANGELOG (PR #${{ github.event.pull_request.number }})" >> $GITHUB_OUTPUT
+            echo "config_file=.changelog.yml" >> $GITHUB_OUTPUT
+          else
+            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
+            echo "commit_message=手动更新 CHANGELOG" >> $GITHUB_OUTPUT
+            echo "config_file=${{ github.event.inputs.config }}" >> $GITHUB_OUTPUT
+
+      - name: 更新CHANGELOG
+        run: |
+          if [ "${{ steps.config.outputs.mode }}" == "full" ]; then
+            python scripts/generate_changelog.py --since $(git rev-list --max-parents=0 HEAD) --config "${{ steps.config.outputs.config_file }}"
+          else
+            python scripts/generate_changelog.py --config "${{ steps.config.outputs.config_file }}"
+          fi
+
+      - name: 检查CHANGELOG是否有更改
+        id: check_changes
+        run: |
+          if git diff --exit-code CHANGELOG.md; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 提交CHANGELOG更改
+        if: steps.check_changes.outputs.changed == 'true'
+        uses: stefanzweifel/git-auto-commit-action@v5.2.0
+        with:
+          commit_message: ${{ steps.config.outputs.commit_message }}
+          file_pattern: CHANGELOG.md
+          commit_user_name: GitHub Actions
+          commit_user_email: actions@github.com
+          commit_author: GitHub Actions <actions@github.com>

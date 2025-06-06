@@ -1,0 +1,53 @@
+{
+    "name": "{{cookiecutter.project_name}}",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "context": "..",
+      "args": {
+        "PYTHON_VERSION": "3.11"
+      }
+    },
+    "workspaceFolder": "/home/vscode",
+    "remoteUser": "vscode",
+    "shutdownAction": "stopContainer",
+
+    // 👇 命令可以使用相对路径和 PATH 中的命令名
+    "postCreateCommand": "./scripts/init.sh",
+    "mounts": [
+      {
+        "source": "${localWorkspaceFolder}",
+        "target": "/home/vscode",
+        "type": "bind"
+      }
+    ],
+    "settings": {
+      "editor.formatOnSave": true,
+      "python.formatting.provider": "black",
+      "python.linting.enabled": true,
+      "python.linting.mypyEnabled": true,
+      "python.linting.ruffEnabled": true,
+      "terminal.integrated.profiles.linux": {
+        "bash": {
+          "path": "bash"
+        }
+      }
+    },
+    "forwardPorts": [8000, 8080],
+    "containerEnv": {
+      "PYTHONUNBUFFERED": "1"
+    },
+    "customizations": {
+      "vscode": {
+        "extensions": [
+          "ms-python.python",
+          "ms-python.vscode-pylance",
+          "ms-toolsai.jupyter",
+          "ms-python.black-formatter",
+          "ms-python.isort",
+          "charliermarsh.ruff",
+          "njpwerner.autodocstring",
+          "matangover.mypy"
+        ]
+      }
+    }
+  }

@@ -1,0 +1,52 @@
+{% if cookiecutter.create_author_file == 'y' -%}
+include AUTHORS.rst
+{% endif -%}
+include CONTRIBUTING.rst
+include CHANGELOG.md
+include LICENSE
+include README.rst
+include CODE_OF_CONDUCT.rst
+include pyproject.toml
+include .gitattributes
+include .editorconfig
+
+{% if cookiecutter.include_cursor_rules == 'y' -%}
+recursive-include .cursor *
+{% endif %}
+
+{% if cookiecutter.include_docker == 'y' -%}
+include Dockerfile
+include docker-compose.yml
+include scripts/docker-build.sh
+include scripts/docker-run.sh
+include scripts/docker-build.bat
+include scripts/docker-run.bat
+{% endif %}
+
+{% if cookiecutter.include_pre_commit == 'y' -%}
+include .pre-commit-config.yaml
+{% endif %}
+
+{% if cookiecutter.include_devcontainer == 'y' -%}
+recursive-include .devcontainer *
+{% endif %}
+
+recursive-include .github *.yml
+recursive-include .vscode *.json
+recursive-include scripts *.py *.sh *.bat
+recursive-include src *.py
+recursive-include config *.yml *.yaml *.json
+recursive-include tests *
+
+recursive-exclude * __pycache__
+recursive-exclude * *.py[co]
+recursive-exclude * *.so
+recursive-exclude * .DS_Store
+recursive-exclude .git *
+recursive-exclude .github/workflows/.git *
+recursive-exclude venv *
+recursive-exclude dist *
+recursive-exclude build *
+recursive-exclude *.egg-info *
+
+recursive-include docs *.rst *.md conf.py Makefile make.bat *.jpg *.png *.gif
