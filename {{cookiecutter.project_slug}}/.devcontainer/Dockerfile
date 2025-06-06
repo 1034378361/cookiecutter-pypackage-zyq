@@ -1,58 +1,44 @@
-FROM centos:7.5.1804
+FROM python:3.11-slim
 
 ARG USERNAME=vscode
 ARG USER_UID=1000
-ARG USER_GID=$USER_UID
+ARG USER_GID=${USER_UID}
+ENV TZ=Asia/Shanghai
+ENV DEBIAN_FRONTEND=noninteractive
 
-# 安装基本工具
-RUN yum update -y \
-    && yum install -y \
-    gcc \
-    gcc-c++ \
-    make \
-    wget \
-    curl \
-    git \
-    sudo \
-    which \
-    bzip2-devel \
-    openssl-devel \
-    libffi-devel \
-    zlib-devel \
-    xz-devel \
-    sqlite-devel \
-    readline-devel
+# 自动换源为阿里云 + 安装系统依赖和常用调试工具
+RUN codename=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2) && \
+    echo "使用 codename: $codename" && \
+    [ -f /etc/apt/sources.list ] || touch /etc/apt/sources.list && \
+    rm -rf /etc/apt/sources.list.d/* && \
+    echo "deb https://mirrors.aliyun.com/debian $codename main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security $codename-security main" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian $codename-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian $codename-backports main contrib non-free" >> /etc/apt/sources.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
+        tzdata sudo git curl wget gcc g++ make build-essential \
+        libffi-dev libbz2-dev zlib1g-dev libsqlite3-dev libreadline-dev \
+        vim less net-tools iputils-ping \
+    && ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# 安装Python {{cookiecutter.python_min_version}}
-# 注意：指定使用3.10.6版本
-RUN cd /tmp \
-    && wget https://www.python.org/ftp/python/3.10.6/Python-3.10.6.tgz \
-    && tar xzf Python-3.10.6.tgz \
-    && cd Python-3.10.6 \
-    && ./configure --enable-optimizations \
-    && make altinstall \
-    && ln -sf /usr/local/bin/python3.10 /usr/bin/python3 \
-    && ln -sf /usr/local/bin/pip3.10 /usr/bin/pip3 \
-    && rm -rf /tmp/Python-3.10.6*
+# 创建非 root 用户
+RUN groupadd --gid $USER_GID $USERNAME && \
+    useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
-# 创建非root用户
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-# 设置Python环境
-RUN pip3 install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip3 install --no-cache-dir pytest pytest-cov \
-    && pip3 install --no-cache-dir black isort ruff mypy sphinx sphinx-rtd-theme \
-    {% if cookiecutter.include_pre_commit == 'y' %}pre-commit bandit{% endif %} \
-    {% if cookiecutter.include_changelog_gen == 'y' %}gitpython{% endif %}
-
-# 创建工作目录
-WORKDIR /workspace
-
-# 设置默认用户为非root
+# 切换到普通用户
 USER $USERNAME
+WORKDIR /home/$USERNAME
 
-# 设置环境变量
-ENV PYTHONPATH=/workspace
-ENV PATH=$PATH:/home/$USERNAME/.local/bin
+# 设置 PATH
+ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
+
+# 创建 .bashrc 并配置 PATH
+RUN touch ~/.bashrc && \
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+
+# 确保权限
+RUN chown -R $USERNAME:$USERNAME /home/$USERNAME
+
+
