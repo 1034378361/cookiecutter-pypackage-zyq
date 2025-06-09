@@ -5,8 +5,37 @@ import re
 import stat
 import subprocess
 import shutil
+import sys
 
-# 确保.gitattributes在Windows和Unix系统上都使用正确的行尾规范
+def print_colored(message, color="reset"):
+    """打印彩色文本"""
+    colors = {
+        "reset": "\033[0m",
+        "red": "\033[91m",
+        "green": "\033[92m",
+        "yellow": "\033[93m",
+        "blue": "\033[94m",
+        "purple": "\033[95m",
+        "cyan": "\033[96m"
+    }
+    print(f"{colors.get(color, colors['reset'])}{message}{colors['reset']}")
+
+def error(message):
+    """打印错误信息"""
+    print_colored(f"错误: {message}", "red")
+    
+def warning(message):
+    """打印警告信息"""
+    print_colored(f"警告: {message}", "yellow")
+    
+def success(message):
+    """打印成功信息"""
+    print_colored(f"成功: {message}", "green")
+    
+def info(message):
+    """打印信息"""
+    print_colored(f"信息: {message}", "blue")
+
 def normalize_gitattributes():
     """确保.gitattributes文件使用规范的行尾。"""
     gitattributes = pathlib.Path('.gitattributes')
@@ -17,465 +46,460 @@ def normalize_gitattributes():
         content = content.replace('\r\n', '\n')
         # 重写文件
         gitattributes.write_text(content)
-        print("已规范化 .gitattributes 行尾")
+        info("已规范化 .gitattributes 行尾")
 
+def check_pyenv_installed():
+    """检查pyenv是否已安装"""
+    try:
+        # 尝试执行pyenv命令
+        subprocess.run(["pyenv", "--version"],
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,
+                      check=True)
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
 
-# def restore_mkdocs_syntax():
-#     """恢复MkDocs特殊语法，将HTML注释替换回原始语法。"""
-#     # 要处理的文件列表
-#     files_to_process = [
-#         pathlib.Path('docs', 'history.md'),
-#         pathlib.Path('docs', 'contributing.md'),
-#         pathlib.Path('docs', 'api', 'index.md'),
-#         pathlib.Path('docs', '_includes', 'history.md'),
-#         pathlib.Path('docs', '_includes', 'contributing.md'),
-#         pathlib.Path('docs', '_includes', 'index.md'),
-#         pathlib.Path('docs', '_includes', 'changelog.md')
-#     ]
+def check_pdm_installed():
+    """检查PDM是否已安装"""
+    try:
+        # 尝试执行pdm命令
+        subprocess.run(["pdm", "--version"],
+                      stdout=subprocess.PIPE,
+                      stderr=subprocess.PIPE,
+                      check=True)
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
 
-#     # 替换模式
-#     include_markdown_pattern = re.compile(
-#         r'<!--\s*.*此处.*include-markdown\s*"([^"]+)".*\s*-->'
-#     )
+def create_python_version_file():
+    """创建.python-version文件用于pyenv"""
+    python_version = "{{ cookiecutter.python_version }}"
+    # 如果python_version是列表，取第一个元素
+    if isinstance(python_version, list):
+        python_version = python_version[0]
+    with open('.python-version', 'w') as f:
+        f.write(python_version + '\n')
+    info(f"已创建.python-version文件，指定Python版本: {python_version}")
 
-#     # 处理每个文件
-#     for file_path in files_to_process:
-#         if file_path.exists():
-#             content = file_path.read_text()
+def is_git_repo(path: str) -> bool:
+    """检查指定路径是否为git仓库"""
+    return (pathlib.Path(path) / ".git").is_dir()
 
-#             # 替换include-markdown注释
-#             content = include_markdown_pattern.sub(
-#                 r'{% raw %}{{%\n  include-markdown "\1"\n%}}{% endraw %}',
-#                 content
-#             )
+def setup_project_by_type():
+    """根据项目类型设置项目结构"""
+    project_type = "{{ cookiecutter.project_type }}"
+    info(f"正在设置项目类型: {project_type}")
+    
+    # 处理命令行接口
+    cli_interface = "{{ cookiecutter.command_line_interface }}"
+    if cli_interface == "No command-line interface":
+        cli_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'cli.py')
+        if cli_file.exists():
+            cli_file.unlink()
+            info("已移除cli.py文件 (不使用命令行接口)")
+    else:
+        info(f"使用 {cli_interface} 作为命令行接口")
+    
+    # 处理项目类型特定设置
+    if project_type == "Standard Library":
+        info("设置标准库项目结构")
+        # 标准库项目默认结构保持不变
+        
+        # 清理非标准库项目特定文件
+        app_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'app.py')
+        if app_file.exists():
+            app_file.unlink()
+            
+        data_analysis_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'data_analysis.py')
+        if data_analysis_file.exists():
+            data_analysis_file.unlink()
+    
+    elif project_type == "CLI Tool":
+        info("设置命令行工具项目结构")
+        # 确保cli.py存在
+        if cli_interface == "No command-line interface":
+            warning("CLI工具项目建议使用命令行接口，但您选择了不使用命令行接口")
+        
+        # 清理非CLI工具特定文件
+        app_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'app.py')
+        if app_file.exists():
+            app_file.unlink()
+            
+        data_analysis_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'data_analysis.py')
+        if data_analysis_file.exists():
+            data_analysis_file.unlink()
+            
+        # 创建examples目录
+        examples_dir = pathlib.Path('examples')
+        examples_dir.mkdir(exist_ok=True)
+        
+        # 创建示例文件
+        example_file = examples_dir / 'cli_example.py'
+        with open(example_file, 'w') as f:
+            f.write('''"""CLI工具使用示例。"""
+import sys
+from pathlib import Path
 
+# 将项目根目录添加到PATH中，以便导入包
+project_root = Path(__file__).parent.parent.absolute()
+sys.path.insert(0, str(project_root))
 
-#             # 替换API文档中的:::注释
-#             if 'api' in str(file_path):
-#                 content = re.sub(
-#                     r'<!--\s*.*此处.*MkDocs插件显示.*API文档:?\s*:::\s*([^\n]+)\s*-->',
-#                     r'::: \1',
-#                     content
-#                 )
+from {{ cookiecutter.project_slug }}.cli import main
 
-#             # 写入修改后的内容
-#             file_path.write_text(content)
-#             print(f"已恢复MkDocs语法: {file_path}")
+if __name__ == "__main__":
+    sys.exit(main())
+''')
+        info("已创建CLI工具示例文件")
+    
+    elif project_type == "Web Service":
+        info("设置Web服务项目结构")
+        # 确保app.py存在，已在模板中创建
+        
+        # 清理非Web服务特定文件
+        data_analysis_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'data_analysis.py')
+        if data_analysis_file.exists():
+            data_analysis_file.unlink()
+        
+        # 在docs中添加API文档目录
+        api_docs_dir = pathlib.Path('docs', 'api')
+        api_docs_dir.mkdir(exist_ok=True, parents=True)
+        
+        # 创建API端点文档文件
+        endpoint_doc = api_docs_dir / 'endpoints.md'
+        with open(endpoint_doc, 'w') as f:
+            f.write('''# API端点文档
 
+## 基础端点
+
+### GET /
+
+返回API欢迎信息。
+
+**响应**:
+```json
+{
+  "message": "欢迎使用 {{ cookiecutter.project_name }} API",
+  "version": "x.y.z"
+}
+```
+
+### GET /health
+
+健康检查端点，用于监控系统。
+
+**响应**:
+```json
+{
+  "status": "healthy"
+}
+```
+
+### GET /info
+
+返回API详细信息。
+
+**响应**:
+```json
+{
+  "app_name": "{{ cookiecutter.project_name }}",
+  "version": "x.y.z",
+  "description": "{{ cookiecutter.project_short_description }}",
+  "author": "{{ cookiecutter.full_name }}"
+}
+```
+
+## 项目端点
+
+### GET /api/items
+
+获取所有项目列表。
+
+**响应**:
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "name": "项目1",
+      "description": "这是项目1的描述"
+    },
+    {
+      "id": 2,
+      "name": "项目2",
+      "description": "这是项目2的描述"
+    }
+  ]
+}
+```
+
+### GET /api/items/{item_id}
+
+获取指定ID的项目详情。
+
+**参数**:
+- `item_id`: 项目ID (整数)
+
+**响应**:
+```json
+{
+  "item": {
+    "id": 1,
+    "name": "项目1",
+    "description": "这是项目1的描述"
+  }
+}
+```
+
+**错误响应** (404):
+```json
+{
+  "detail": "项目ID {item_id} 不存在"
+}
+```
+''')
+        info("已创建Web服务API文档")
+    
+    elif project_type == "Data Science":
+        info("设置数据科学项目结构")
+        # 确保data_analysis.py存在，已在模板中创建
+        
+        # 清理非数据科学特定文件
+        app_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'app.py')
+        if app_file.exists():
+            app_file.unlink()
+        
+        # 创建数据和notebooks目录
+        data_dir = pathlib.Path('data')
+        data_dir.mkdir(exist_ok=True)
+        
+        notebooks_dir = pathlib.Path('notebooks')
+        notebooks_dir.mkdir(exist_ok=True)
+        
+        # 创建空的.gitkeep文件，以便空目录也能提交到git
+        (data_dir / '.gitkeep').touch()
+        
+        # 创建示例Jupyter notebook
+        example_notebook = notebooks_dir / 'example_analysis.ipynb'
+        with open(example_notebook, 'w') as f:
+            f.write('''{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# {{ cookiecutter.project_name }} 分析示例\\n\\n此notebook展示了如何使用{{ cookiecutter.project_slug }}进行数据分析。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import sys\\nfrom pathlib import Path\\n\\n# 将项目根目录添加到PATH中，以便导入包\\nproject_root = Path.cwd().parent\\nsys.path.insert(0, str(project_root))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 导入核心库\\nimport pandas as pd\\nimport numpy as np\\nimport matplotlib.pyplot as plt\\nimport seaborn as sns\\n\\n# 设置可视化样式\\nplt.style.use('ggplot')\\nsns.set_theme()\\n\\n# 导入项目包\\nfrom {{ cookiecutter.project_slug }}.data_analysis import *"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 载入数据\\n\\n首先，让我们载入示例数据集。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 使用项目的data_analysis模块加载数据\\n# df = load_dataset('path/to/your/data.csv')\\n\\n# 这里使用内置数据集作为示例\\nfrom sklearn.datasets import load_iris\\niris = load_iris()\\ndf = pd.DataFrame(iris.data, columns=iris.feature_names)\\ndf['target'] = iris.target\\ndf.head()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 数据分析\\n\\n使用项目中的分析函数进行数据探索。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 分析数据集\\nstats = analyze_dataset(df)\\n\\n# 显示基本统计信息\\nprint(f\"行数: {stats['rows']}\\n列数: {stats['columns']}\\n\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 生成可视化\\n# 注意：在实际使用中，你需要传入一个有效的输出目录\\noutput_dir = Path('./output')\\noutput_dir.mkdir(exist_ok=True)\\n\\n# 创建可视化\\n# 注意：在notebook中，我们直接在notebook中显示图表\\n\\n# 相关性热图\\nplt.figure(figsize=(10, 8))\\nsns.heatmap(df.corr(), annot=True, cmap='coolwarm')\\nplt.title('特征相关性热图')\\nplt.show()"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## 模型训练\\n\\n使用项目中的模型训练函数进行训练。"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 训练简单模型\\nmodel_data = train_model(\\n    df=df,\\n    target_column='target',\\n    feature_columns=None,  # 使用所有数值列作为特征\\n    test_size=0.2,\\n    random_state=42\\n)\\n\\n# 显示模型评估指标\\nprint(\"模型评估指标:\\n\")\\nfor metric, value in model_data['metrics'].items():\\n    if metric != 'feature_importance':\\n        print(f\"{metric}: {value:.4f}\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "# 显示特征重要性\\nfeature_imp = pd.Series(model_data['metrics']['feature_importance'], index=model_data['feature_columns'])\\nfeature_imp.sort_values(ascending=False, inplace=True)\\n\\nplt.figure(figsize=(10, 6))\\nsns.barplot(x=feature_imp, y=feature_imp.index)\\nplt.title('特征重要性')\\nplt.tight_layout()\\nplt.show()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.5"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 4
+}''')
+        info("已创建数据科学目录结构和示例notebook")
+        
+        # 创建README.md以便在数据目录中提供指南
+        data_readme = data_dir / 'README.md'
+        with open(data_readme, 'w') as f:
+            f.write('''# 数据目录
+
+此目录用于存放项目相关数据。
+
+## 目录结构
+
+- `raw/`: 存放原始数据
+- `processed/`: 存放处理后的数据
+- `external/`: 存放来自外部源的数据
+
+## 数据文件
+
+请在此目录中存放数据文件，但不要将大型数据文件提交到Git仓库。
+建议在`.gitignore`中添加数据文件的忽略规则，并在文档中说明如何获取数据。
+''')
+    
+    elif project_type == "Custom":
+        info("设置自定义项目结构 (最小化)")
+        # 只保留最基本的结构，清理所有特定项目类型的文件
+        app_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'app.py')
+        if app_file.exists():
+            app_file.unlink()
+            
+        data_analysis_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'data_analysis.py')
+        if data_analysis_file.exists():
+            data_analysis_file.unlink()
+    
+    # 许可证处理
+    if "{{ cookiecutter.open_source_license }}" == "Not open source":
+        license_file = pathlib.Path('LICENSE')
+        if license_file.exists():
+            license_file.unlink()
+            info("已移除LICENSE文件 (不使用开源许可证)")
+    else:
+        info(f"使用开源许可证: {{ cookiecutter.open_source_license }}")
 
 if __name__ == '__main__':
-
-    if '{{ cookiecutter.create_author_file }}' != 'y':
-        pathlib.Path('AUTHORS.rst').unlink()
-        pathlib.Path('docs', 'authors.rst').unlink()
-
-    if 'no' in '{{ cookiecutter.command_line_interface|lower }}':
-        pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'cli.py').unlink()
-
-    if '{{ cookiecutter.open_source_license }}' == 'Not open source':
-        pathlib.Path('LICENSE').unlink()
-
-    # 处理测试覆盖率配置
-    if '{{ cookiecutter.use_pytest }}' != 'y':
-        # 如果不使用pytest，移除pytest覆盖率配置
-        pyproject_file = pathlib.Path('pyproject.toml')
-        if pyproject_file.exists():
-            content = pyproject_file.read_text()
-
-            # 移除pytest.ini_options中的覆盖率相关配置
-            lines = content.splitlines()
-            filtered_lines = []
-            skip_line = False
-            for line in lines:
-                if "# 测试覆盖率配置" in line:
-                    skip_line = True
-                elif skip_line and not line.strip().startswith('[tool.'):
-                    continue
-                elif skip_line and line.strip().startswith('[tool.'):
-                    skip_line = False
-
-                # 移除coverage.report部分
-                if line.strip() == "[tool.coverage.report]":
-                    skip_line = True
-                elif skip_line and any(line.strip().startswith(x) for x in ["[tool.", "exclude_lines ="]):
-                    skip_line = False
-
-                if not skip_line:
-                    filtered_lines.append(line)
-
-            pyproject_file.write_text("\n".join(filtered_lines))
-
-            # 如果有测试相关的GitHub Actions工作流，移除覆盖率配置
-            test_workflow = pathlib.Path('.github', 'workflows', 'test.yml')
-            if test_workflow.exists():
-                content = test_workflow.read_text()
-                content = content.replace('--cov=src --cov-report=term --cov-report=xml --cov-fail-under=85', '')
-                test_workflow.write_text(content)
-    else:
-        # 使用pytest时，确保覆盖率阈值统一设置为85%
-        coverage_threshold = "85"  # 默认覆盖率阈值
-
-        # 更新tox.ini中的覆盖率阈值
-        tox_file = pathlib.Path('tox.ini')
-        if tox_file.exists():
-            content = tox_file.read_text()
-            content = re.sub(
-                r'--cov-fail-under=\d+',
-                f'--cov-fail-under={coverage_threshold}',
-                content
-            )
-            tox_file.write_text(content)
-
-        # 更新Makefile中的覆盖率阈值
-        makefile = pathlib.Path('Makefile')
-        if makefile.exists():
-            content = makefile.read_text()
-            content = re.sub(
-                r'--cov-fail-under=\d+',
-                f'--cov-fail-under={coverage_threshold}',
-                content
-            )
-            makefile.write_text(content)
-
-        # 更新pyproject.toml中的覆盖率阈值
-        pyproject_file = pathlib.Path('pyproject.toml')
-        if pyproject_file.exists():
-            content = pyproject_file.read_text()
-            content = re.sub(
-                r'fail_under = \d+',
-                f'fail_under = {coverage_threshold}',
-                content
-            )
-            pyproject_file.write_text(content)
-
-        # 更新GitHub Actions工作流中的覆盖率阈值
-        test_workflow = pathlib.Path('.github', 'workflows', 'test.yml')
-        if test_workflow.exists():
-            content = test_workflow.read_text()
-            content = re.sub(
-                r'--cov-fail-under=\d+',
-                f'--cov-fail-under={coverage_threshold}',
-                content
-            )
-            test_workflow.write_text(content)
-
-    # 根据选项决定是否保留工具函数库
-    if '{{ cookiecutter.include_utils_lib }}' != 'y':
-        utils_dir = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'utils')
-        if utils_dir.exists():
-            for file in utils_dir.glob('*.py'):
-                file.unlink()
-            utils_dir.rmdir()
-
-    # 根据选项决定是否保留版本管理功能
-    if '{{ cookiecutter.include_version_management }}' != 'y':
-        version_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', '_version.py')
-        if version_file.exists():
-            version_file.unlink()
-
-        # 修改__init__.py文件，使用简单的版本定义
-        init_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', '__init__.py')
-        content = init_file.read_text()
-        content = content.replace(
-            "# 版本管理\nfrom ._version import get_version\n__version__ = get_version()",
-            "__version__ = '{{ cookiecutter.version }}'"
-        )
-        init_file.write_text(content)
-
-    # 如果不使用GitHub Actions，移除相关文件
-    if '{{ cookiecutter.include_github_actions }}' != 'y':
-        workflows_dir = pathlib.Path('.github', 'workflows')
-        if workflows_dir.exists():
-            for workflow_file in workflows_dir.glob('*.yml'):
-                workflow_file.unlink()
-            workflows_dir.rmdir()
-
-            # 如果.github目录为空，也删除
-            github_dir = pathlib.Path('.github')
-            if not any(github_dir.iterdir()):
-                github_dir.rmdir()
-    else:
-        # 如果使用GitHub Actions，则移除Travis CI配置
-        travis_file = pathlib.Path('.travis.yml')
-        if travis_file.exists():
-            travis_file.unlink()
-
-    # 如果不使用pre-commit，移除相关文件
-    if '{{ cookiecutter.include_pre_commit }}' != 'y':
-        precommit_file = pathlib.Path('.pre-commit-config.yaml')
-        if precommit_file.exists():
-            precommit_file.unlink()
-
-        # 移除pyproject.toml中的pre-commit相关配置
-        pyproject_file = pathlib.Path('pyproject.toml')
-        if pyproject_file.exists():
-            content = pyproject_file.read_text()
-
-            # 移除pre-commit相关依赖
-            content = content.replace('"pre-commit>=3.6.0",  # git hooks\n', '')
-            content = content.replace('"pydocstyle",  # docstring style checking\n', '')
-            content = content.replace('"bandit>=1.8.3",  # security checks\n', '')
-            content = content.replace('"types-PyYAML",  # PyYAML类型提示\n', '')
-
-            # 移除安全扫描相关依赖
-            content = content.replace('"safety",  # 依赖安全检查\n', '')
-
-            # 移除pydocstyle, bandit和其他安全检查工具配置
-            lines = content.splitlines()
-            filtered_lines = []
-            skip_section = False
-            for line in lines:
-                if any(line.startswith(s) for s in ["# Bandit", "# Pydocstyle", "[tool.bandit]"]):
-                    skip_section = True
-                elif skip_section and (line.startswith("[tool.") or (line.strip() == "" and len(filtered_lines) > 0 and filtered_lines[-1].strip() == "")):
-                    skip_section = False
-
-                if not skip_section:
-                    filtered_lines.append(line)
-
-            pyproject_file.write_text("\n".join(filtered_lines))
-
-        # 修改GitHub Actions工作流，移除安全检查相关步骤
-        workflows_dir = pathlib.Path('.github', 'workflows')
-        if workflows_dir.exists():
-            for workflow_file in workflows_dir.glob('*.yml'):
-                if workflow_file.exists():
-                    content = workflow_file.read_text()
-
-                    # 移除安全检查相关步骤
-                    if 'bandit' in content or 'safety check' in content:
-                        lines = content.splitlines()
-                        filtered_lines = []
-                        skip_step = False
-                        for line in lines:
-                            if ('bandit' in line or 'safety check' in line) and 'name:' in line:
-                                skip_step = True
-                            elif skip_step and line.strip().startswith('-') and 'run:' not in line:
-                                continue
-                            elif skip_step and 'run:' in line:
-                                skip_step = False
-                                continue
-
-                            if not skip_step:
-                                filtered_lines.append(line)
-
-                        workflow_file.write_text("\n".join(filtered_lines))
-
-    # 如果不使用CHANGELOG自动生成，移除相关文件
-    if '{{ cookiecutter.include_changelog_gen }}' != 'y':
-        # 移除脚本
-        changelog_script = pathlib.Path('scripts', 'generate_changelog.py')
-        if changelog_script.exists():
-            changelog_script.unlink()
-
-        # 如果scripts目录为空，也删除它
-        scripts_dir = pathlib.Path('scripts')
-        scripts_init = pathlib.Path('scripts', '__init__.py')
-        if scripts_init.exists():
-            scripts_init.unlink()
-
-        if scripts_dir.exists() and not any(scripts_dir.iterdir()):
-            scripts_dir.rmdir()
-
-        # 移除Makefile中的CHANGELOG相关命令
-        makefile = pathlib.Path('Makefile')
-        if makefile.exists():
-            content = makefile.read_text()
-            # 移除changelog相关的.PHONY行
-            content = content.replace(' changelog changelog-init', '')
-
-            # 移除changelog目标
-            lines = content.splitlines()
-            filtered_lines = []
-            skip_line = False
-            for line in lines:
-                if line.startswith('changelog:') or line.startswith('changelog-init:'):
-                    skip_line = True
-                elif skip_line and not line.startswith('\t'):
-                    skip_line = False
-
-                if not skip_line:
-                    filtered_lines.append(line)
-
-            makefile.write_text("\n".join(filtered_lines))
-
-        # 修改pyproject.toml，移除gitpython依赖
-        pyproject_file = pathlib.Path('pyproject.toml')
-        if pyproject_file.exists():
-            content = pyproject_file.read_text()
-            content = content.replace('"gitpython",  # git操作，用于changelog生成\n', '')
-            pyproject_file.write_text(content)
-
-        # 移除CHANGELOG.md文件
-        changelog_file = pathlib.Path('CHANGELOG.md')
-        if changelog_file.exists():
-            changelog_file.unlink()
-
-        # 移除GitHub Actions的changelog.yml文件
-        changelog_workflow = pathlib.Path('.github', 'workflows', 'changelog.yml')
-        if changelog_workflow.exists():
-            changelog_workflow.unlink()
-
-        # 修改publish.yml，移除对CHANGELOG脚本的依赖
-        publish_workflow = pathlib.Path('.github', 'workflows', 'publish.yml')
-        if publish_workflow.exists():
-            content = publish_workflow.read_text()
-
-            # 回退到原来的发布说明生成方式
-            content = re.sub(
-                r'# 使用我们的CHANGELOG脚本生成变更日志[\s\S]*?EOF" >> \$GITHUB_OUTPUT',
-                '''# 生成发布说明
-      id: generate_notes
-      run: |
-        # 查找最近两个标签
-        {% raw %}CURRENT_TAG="v${{ steps.get_version.outputs.version }}"
-        PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${CURRENT_TAG}$" | head -n 1)
-
-        # 如果没有之前的标签，使用第一个提交
-        if [ -z "$PREV_TAG" ]; then
-          PREV_TAG=$(git rev-list --max-parents=0 HEAD)
-        fi
-
-        # 生成变更日志
-        echo "从 ${PREV_TAG} 到 ${CURRENT_TAG} 的变更：" > RELEASE_NOTES.md
-        echo "" >> RELEASE_NOTES.md
-        git log --pretty=format:"* %s (%h)" ${PREV_TAG}..HEAD >> RELEASE_NOTES.md
-
-        # 将发布说明设为输出变量
-        NOTES=$(cat RELEASE_NOTES.md)
-        echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-        echo "$NOTES" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT{% endraw %}''',
-                content
-            )
-
-            # 移除gitpython依赖
-            content = re.sub(
-                r'pip install gitpython',
-                '',
-                content
-            )
-
-            # 修改输出变量引用
-            content = content.replace(
-                '{% raw %}release_notes: ${{ steps.get_changelog.outputs.release_notes }}{% endraw %}',
-                '{% raw %}release_notes: ${{ steps.generate_notes.outputs.release_notes }}{% endraw %}'
-            )
-
-
-            publish_workflow.write_text(content)
-
-    # 如果不使用开发容器配置，移除相关文件
-    if '{{ cookiecutter.include_devcontainer }}' != 'y':
-        devcontainer_dir = pathlib.Path('.devcontainer')
-        if devcontainer_dir.exists():
-            for file in devcontainer_dir.glob('*'):
-                file.unlink()
-            devcontainer_dir.rmdir()
-
-    # 如果不使用Dependabot，移除配置文件
-    if '{{ cookiecutter.include_dependabot }}' != 'y':
-        dependabot_file = pathlib.Path('.github', 'dependabot.yml')
-        if dependabot_file.exists():
-            dependabot_file.unlink()
-    else:
-        # 确保.github目录存在
-        github_dir = pathlib.Path('.github')
-        if not github_dir.exists():
-            github_dir.mkdir(exist_ok=True)
-            print("已创建 .github 目录")
-
-    # 如果不使用Docker支持，移除相关文件
-    if '{{ cookiecutter.include_docker }}' != 'y':
-        # 移除Dockerfile
-        dockerfile = pathlib.Path('Dockerfile')
-        if dockerfile.exists():
-            dockerfile.unlink()
-
-        # 移除docker-compose.yml
-        docker_compose = pathlib.Path('docker-compose.yml')
-        if docker_compose.exists():
-            docker_compose.unlink()
-
-        # 移除Docker相关脚本
-        docker_scripts = [
-            pathlib.Path('scripts', 'docker-build.sh'),
-            pathlib.Path('scripts', 'docker-run.sh'),
-            pathlib.Path('scripts', 'docker-build.bat'),
-            pathlib.Path('scripts', 'docker-run.bat')
-        ]
-
-        for script in docker_scripts:
-            if script.exists():
-                script.unlink()
-
-        # 移除Docker文档
-        docker_doc = pathlib.Path('docs', 'docker.md')
-        if docker_doc.exists():
-            docker_doc.unlink()
-
-        # 更新README.rst，移除Docker相关内容
-        readme = pathlib.Path('README.rst')
-        if readme.exists():
-            content = readme.read_text()
-
-            # 移除Docker支持部分
-            content = re.sub(
-                r'\* Docker支持:[\s\S]*?完整的部署文档\n\n',
-                '',
-                content
-            )
-
-            readme.write_text(content)
-    else:
-        # 如果保留Docker支持，确保Shell脚本可执行
-        shell_scripts = [
-            pathlib.Path('scripts', 'docker-build.sh'),
-            pathlib.Path('scripts', 'docker-run.sh')
-        ]
-
-        for script in shell_scripts:
-            if script.exists():
-                # 添加可执行权限(Unix系统)
-                if os.name != 'nt':  # 非Windows
-                    current = os.stat(script)
-                    os.chmod(script, current.st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-
-    # 如果ruff.toml为空，则删除它
-    ruff_config = pathlib.Path('ruff.toml')
-    if ruff_config.exists() and ruff_config.stat().st_size == 0:
-        ruff_config.unlink()
-
+    success("开始项目后处理...")
+    
+    # 根据项目类型设置项目
+    setup_project_by_type()
+    
     # 规范化.gitattributes行尾
     normalize_gitattributes()
-
-    # 处理Cursor规则文件
-    if '{{ cookiecutter.include_cursor_rules|default("n") }}' != 'y':
-        cursor_rules_dir = pathlib.Path('.cursor', 'rules')
-        if cursor_rules_dir.exists():
-            for file in cursor_rules_dir.glob('*'):
-                file.unlink()
-            cursor_rules_dir.rmdir()
-
-            # 如果.cursor目录为空，也删除它
-            cursor_dir = pathlib.Path('.cursor')
-            if not any(cursor_dir.iterdir()):
-                cursor_dir.rmdir()
-
-    # 恢复MkDocs特殊语法
-    # restore_mkdocs_syntax()
-
-    # 自动初始化git仓库
-    def is_git_repo(path: str) -> bool:
-        return (pathlib.Path(path) / ".git").is_dir()
-
+    
+    # 初始化git仓库
     if shutil.which("git") is None:
-        print("未检测到 git，请先安装 Git（https://git-scm.com/）后再使用本项目的版本控制功能。")
+        warning("未检测到git，请先安装Git后再使用本项目的版本控制功能")
     elif not is_git_repo(os.getcwd()):
         try:
             subprocess.run(["git", "init", "-b", "main"], check=True)
-            print("已自动初始化 git 仓库成功。")
+            success("已初始化git仓库")
         except Exception as e:
-            print(f"自动初始化 git 仓库失败: {e}")
+            warning(f"初始化git仓库失败: {e}")
     else:
-        print("当前目录已是 git 仓库，跳过初始化。")
+        info("当前目录已是git仓库，跳过初始化")
+    
+    # 创建.python-version文件
+    create_python_version_file()
+    
+    # 检测pyenv是否安装
+    if not check_pyenv_installed():
+        warning("未检测到pyenv安装")
+        warning("为获得最佳体验，建议安装pyenv管理Python版本")
+        warning("安装指南: https://github.com/pyenv/pyenv#installation")
+        selected_version = "{{ cookiecutter.python_version }}"
+        if isinstance(selected_version, list):
+            selected_version = selected_version[0]
+        warning(f"安装完成后，请在项目目录运行: pyenv install {selected_version}")
+    else:
+        selected_version = "{{ cookiecutter.python_version }}"
+        if isinstance(selected_version, list):
+            selected_version = selected_version[0]
+        info(f"pyenv已安装，您可以运行: pyenv install {selected_version}")
+    
+    # 检测PDM是否安装
+    if not check_pdm_installed():
+        warning("未检测到PDM包管理器")
+        warning("本项目使用PDM进行依赖管理，强烈建议安装")
+        warning("安装指南: 执行 `curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -`")
+        warning("或访问 https://pdm.fming.dev/latest/#installation 查看其他安装方式")
+    else:
+        info("PDM已安装，项目可以直接使用PDM进行依赖管理")
+    
+    # 项目创建完成提示
+    success("\n项目 {{ cookiecutter.project_name }} 创建成功!")
+    success(f"项目路径: {os.path.abspath('.')}")
+    success("接下来，建议执行:")
+    print_colored(f"  1. cd {{ cookiecutter.project_slug }}", "cyan")
+    if not check_pdm_installed():
+        print_colored("  2. 安装PDM: curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -", "cyan")
+        print_colored("  3. pdm install -d  # 安装所有依赖（包括开发依赖）", "cyan")
+        print_colored("  4. 开始开发吧!", "cyan")
+    else:
+        print_colored("  2. pdm install -d  # 安装所有依赖（包括开发依赖）", "cyan")
+        print_colored("  3. 开始开发吧!", "cyan")
+    
+    print_colored("\n项目类型：{{ cookiecutter.project_type }}", "purple")
+    print_colored("命令行接口：{{ cookiecutter.command_line_interface }}", "purple")
+    print_colored(f"Python版本：{{ cookiecutter.python_version }}", "purple")

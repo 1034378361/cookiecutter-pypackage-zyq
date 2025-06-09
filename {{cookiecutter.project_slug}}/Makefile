@@ -1,135 +1,217 @@
-.PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install lint lint/flake8 \
-	changelog changelog-init docker docker-build docker-run docker-clean poetry-install
+.PHONY: clean clean-build clean-pyc clean-test coverage dist docs help install dev-install \
+	lint format test test-all release docker docker-build docker-run setup venv check-update pre-commit \
+	full-install
 
 .DEFAULT_GOAL := help
 
-define BROWSER_PYSCRIPT
-import os, webbrowser, sys
-
+# 创建跨平台辅助脚本
+define HELPER_SCRIPT
+#!/usr/bin/env python3
+"""跨平台Makefile辅助脚本。"""
+import os
+import re
+import sys
+import shutil
+import webbrowser
+from pathlib import Path
 from urllib.request import pathname2url
 
-webbrowser.open("file://" + pathname2url(os.path.abspath(sys.argv[1])))
+def open_browser(filepath):
+    """在默认浏览器中打开文件。"""
+    url = 'file://' + pathname2url(os.path.abspath(filepath))
+    webbrowser.open(url)
+
+def print_help(makefile):
+    """打印Makefile帮助信息。"""
+    with open(makefile, 'r') as f:
+        for line in f:
+            match = re.match(r'^([a-zA-Z_-]+):.*?## (.*)$$', line)
+            if match:
+                target, help = match.groups()
+                print(f"{target:20} {help}")
+
+def clean_paths(paths):
+    """删除指定的文件和目录。"""
+    for path_pattern in paths:
+        for path in Path('.').glob(path_pattern):
+            if path.is_dir():
+                print(f"删除目录: {path}")
+                shutil.rmtree(path, ignore_errors=True)
+            elif path.is_file():
+                print(f"删除文件: {path}")
+                path.unlink()
+
+def check_content(pattern, directories):
+    """检查文件内容中是否有指定模式。"""
+    found = False
+    regex = re.compile(pattern)
+
+    for directory in directories:
+        for root, _, files in os.walk(directory):
+            for file in files:
+                if not file.endswith(('.py', '.md', '.rst', '.txt')):
+                    continue
+
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                        if regex.search(content):
+                            print(f"在 {filepath} 中发现匹配内容")
+                            found = True
+                except Exception as e:
+                    print(f"无法读取 {filepath}: {e}")
+
+    return found
+
+if __name__ == "__main__":
+    command = sys.argv[1] if len(sys.argv) > 1 else "help"
+
+    if command == "browser" and len(sys.argv) > 2:
+        open_browser(sys.argv[2])
+    elif command == "help" and len(sys.argv) > 2:
+        print_help(sys.argv[2])
+    elif command == "clean" and len(sys.argv) > 2:
+        clean_paths(sys.argv[2:])
+    elif command == "check" and len(sys.argv) > 3:
+        pattern = sys.argv[2]
+        dirs = sys.argv[3:]
+        found = check_content(pattern, dirs)
+        sys.exit(1 if found else 0)
+    else:
+        print(f"未知或不完整的命令: {' '.join(sys.argv[1:])}")
+        sys.exit(1)
 endef
-export BROWSER_PYSCRIPT
+export HELPER_SCRIPT
 
-define PRINT_HELP_PYSCRIPT
-import re, sys
+# 创建辅助脚本
+$(shell echo "$$HELPER_SCRIPT" > .make_helper.py && chmod +x .make_helper.py)
 
-for line in sys.stdin:
-	match = re.match(r'^([a-zA-Z_-]+):.*?## (.*)$$', line)
-	if match:
-		target, help = match.groups()
-		print("%-20s %s" % (target, help))
-endef
-export PRINT_HELP_PYSCRIPT
+help: ## 显示帮助信息
+	@python .make_helper.py help $(MAKEFILE_LIST)
 
-BROWSER := python -c "$$BROWSER_PYSCRIPT"
+clean: clean-build clean-pyc clean-test ## 删除所有构建、测试和Python缓存文件
 
-help:
-	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+clean-build: ## 删除构建产物
+	@python .make_helper.py clean "build/*" "dist/*" ".eggs/*" "*.egg-info" "*.egg"
 
-clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
+clean-pyc: ## 删除Python编译缓存
+	@python .make_helper.py clean "**/*.pyc" "**/*.pyo" "**/*~" "**/__pycache__"
 
-clean-build: ## remove build artifacts
-	rm -fr build/
-	rm -fr dist/
-	rm -fr .eggs/
-	find . -name '*.egg-info' -exec rm -fr {} +
-	find . -name '*.egg' -exec rm -f {} +
+clean-test: ## 删除测试缓存和覆盖率报告
+	@python .make_helper.py clean ".tox" ".coverage" "htmlcov" ".pytest_cache"
 
-clean-pyc: ## remove Python file artifacts
-	find . -name '*.pyc' -exec rm -f {} +
-	find . -name '*.pyo' -exec rm -f {} +
-	find . -name '*~' -exec rm -f {} +
-	find . -name '__pycache__' -exec rm -fr {} +
+lint: ## 运行代码质量检查
+	ruff check src tests
+	ruff format --check src tests
+	mypy src
+	# 检查调试语句和合并冲突
+	@python .make_helper.py check "(import pdb|breakpoint\(\)|<<<<<<< HEAD)" src tests docs || (echo "错误: 发现调试语句或合并冲突"; exit 1)
 
-clean-test: ## remove test and coverage artifacts
-	rm -fr .tox/
-	rm -f .coverage
-	rm -fr htmlcov/
-	rm -fr .pytest_cache
+format: ## 格式化代码
+	ruff format src tests
+	ruff check --fix src tests
 
-lint: ## run linters
-	poetry run ruff check src tests
-	poetry run ruff format --check src tests
-	poetry run black --check src tests
-	poetry run isort --check src tests
-	poetry run mypy src
-	# 检查调试语句
-	! grep -r "import pdb" src tests
-	! grep -r "breakpoint()" src tests
-	# 检查合并冲突
-	! grep -r "<<<<<<< HEAD" src tests docs
+test: ## 运行测试
+	pytest --cov=src --cov-report=term --cov-report=html --cov-report=xml --cov-fail-under=85
 
-format: ## format code
-	poetry run ruff format src tests
-	poetry run black src tests
-	poetry run isort src tests
+test-all: ## 使用tox运行多环境测试
+	pdm run tox
 
-test: ## run tests quickly with the default Python
-{%- if cookiecutter.use_pytest == 'y' %}
-	poetry run pytest --cov=src --cov-report=term --cov-report=html --cov-fail-under=85
-{%- else %}
-	poetry run python setup.py test
-{%- endif %}
+test-parallel: ## 并行运行测试以提高速度
+	pytest -xvs --cov=src -n auto
 
-test-all: ## run tests on every Python version with tox
-	poetry run tox
+coverage: ## 检查代码覆盖率
+	pytest --cov=src --cov-report=term --cov-report=html
+	python .make_helper.py browser htmlcov/index.html
 
-coverage: ## check code coverage quickly with the default Python
-{%- if cookiecutter.use_pytest == 'y' %}
-	poetry run pytest --cov=src --cov-report=term --cov-report=html --cov-fail-under=85
-{%- else %}
-	poetry run coverage run --source {{ cookiecutter.project_slug }} -m pytest
-	poetry run coverage report -m --fail-under=85
-	poetry run coverage html
-{%- endif %}
-	$(BROWSER) htmlcov/index.html
+docs: ## 生成MkDocs文档
+	pdm run mkdocs build
+	python .make_helper.py browser site/index.html
 
-docs: ## generate MkDocs documentation
-	poetry run mkdocs build
-	$(BROWSER) site/index.html
+servedocs: ## 启动文档服务器，支持实时重载
+	pdm run mkdocs serve
 
-servedocs: ## serve documentation locally with live reload
-	poetry run mkdocs serve
+release: dist ## 打包并发布
+	pdm publish
 
-release: dist ## package and upload a release
-	poetry publish
+dist: clean ## 构建源码和wheel包
+	pdm build
+	@echo "构建的分发包:"
+	@ls -l dist
 
-dist: clean ## builds source and wheel package
-	poetry build
-	ls -l dist
+install: clean ## 安装包
+	pip install .
 
-install: clean ## install the package
-	poetry install
+dev-install: clean ## 安装包和开发依赖
+	pip install -e ".[dev]"
 
-dev-install: clean ## install the package and development dependencies
-	poetry install --with dev
+full-install: clean ## 安装包和所有开发依赖（包括项目类型特定依赖）
+	pip install -e ".[full-dev]"
 
-poetry-install: ## install Poetry if it's not installed
-	curl -sSL https://install.python-poetry.org | python3 -
+pdm-install: clean ## 使用PDM安装包和开发依赖
+	pdm install -d
 
-changelog: ## 从最新标签开始生成CHANGELOG
-	poetry run python scripts/generate_changelog.py --config .changelog.yml --verbose
+pdm-full-install: clean ## 使用PDM安装包和所有开发依赖
+	pdm install -G full-dev
 
-changelog-init: ## 生成完整项目历史的CHANGELOG
-	poetry run python scripts/generate_changelog.py --since $(shell git rev-list --max-parents=0 HEAD) --config .changelog.yml --verbose
+venv: ## 创建虚拟环境并安装开发依赖
+	python -m venv .venv
+	.venv/bin/pip install -U pip
+	.venv/bin/pip install -e ".[dev]"
+	@echo "虚拟环境创建成功!"
+	@echo "使用 'source .venv/bin/activate' (Linux/Mac) 或 '.venv\\Scripts\\activate' (Windows) 激活环境"
 
-{% if cookiecutter.include_docker == 'y' %}
-docker: docker-build ## alias for docker-build
+setup: ## 运行统一安装脚本
+	python setup.py
 
-docker-build: ## build Docker image
-	bash scripts/docker-build.sh latest
+bump-version: ## 更新项目版本号 (使用: make bump-version PART=minor)
+	bump2version $(PART)
 
-docker-build-%: ## build Docker image with specific tag (make docker-build-1.0.0)
-	bash scripts/docker-build.sh $*
+{% if cookiecutter.project_type == "Web Service" %}
+# Web服务相关命令
+run-dev: ## 运行开发服务器
+	python -m {{cookiecutter.project_slug}}.app
 
-docker-run: ## run Docker container
-	bash scripts/docker-run.sh latest
-
-docker-run-%: ## run Docker container with specific tag (make docker-run-1.0.0)
-	bash scripts/docker-run.sh $*
-
-docker-clean: ## remove Docker images for this project
-	docker images | grep {{cookiecutter.project_slug}} | awk '{print $$3}' | xargs -r docker rmi
+test-api: ## 运行API测试
+	pytest tests/test_api -v
 {% endif %}
+
+{% if cookiecutter.project_type == "CLI Tool" %}
+# CLI相关命令
+run-example: ## 运行CLI工具示例
+	python -m {{cookiecutter.project_slug}}
+
+test-cli: ## 运行CLI测试
+	pytest tests/test_cli -v
+{% endif %}
+
+{% if cookiecutter.project_type == "Data Science" %}
+# 数据科学相关命令
+notebook: ## 启动Jupyter notebook
+	jupyter notebook
+
+lint-notebooks: ## 检查notebook代码质量
+	nbqa ruff notebooks/
+{% endif %}
+
+docker-build: ## 构建Docker镜像
+	python scripts/docker.py build
+
+docker-run: ## 运行Docker容器
+	python scripts/docker.py run -i
+
+pre-commit: ## 安装pre-commit钩子
+	pip install pre-commit
+	pre-commit install
+
+check-update: ## 检查依赖更新
+	pdm update --dry-run
+
+changelog: ## 生成变更日志
+	@echo "正在生成变更日志..."
+	@if [ -f "scripts/generate_changelog.py" ]; then \
+		python scripts/generate_changelog.py; \
+	else \
+		echo "变更日志脚本不存在，请确认项目配置"; \
+	fi

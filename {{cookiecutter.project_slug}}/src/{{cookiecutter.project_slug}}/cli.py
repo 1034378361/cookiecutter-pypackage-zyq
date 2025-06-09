@@ -1,48 +1,242 @@
 """Console script for {{cookiecutter.project_slug}}."""
+import sys
+from pathlib import Path
 import {{cookiecutter.project_slug}}
 
 {% if cookiecutter.command_line_interface == 'Typer' %}
 import typer
 from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from typing import Optional, List
 
-app = typer.Typer()
+app = typer.Typer(
+    help="{{cookiecutter.project_short_description}}",
+    add_completion=True,
+)
 console = Console()
 
+{% if cookiecutter.project_type == 'CLI Tool' %}
+# CLI工具特定命令
+@app.command()
+def process(
+    input_file: Path = typer.Argument(
+        ...,
+        exists=True,
+        dir_okay=False,
+        help="输入文件路径"
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        "-o",
+        help="输出文件路径"
+    ),
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        "-v",
+        help="显示详细输出"
+    ),
+):
+    """处理输入文件并生成输出。"""
+    if verbose:
+        console.print(f"处理文件: [bold]{input_file}[/bold]")
+
+    # 这里添加文件处理逻辑
+
+    if output_file:
+        if verbose:
+            console.print(f"输出保存到: [bold]{output_file}[/bold]")
+    else:
+        console.print("处理完成，没有指定输出文件")
+
+@app.command()
+def list_examples():
+    """列出可用的示例。"""
+    table = Table(title="可用示例")
+    table.add_column("名称", style="cyan")
+    table.add_column("描述", style="green")
+
+    table.add_row("示例1", "示例1的描述")
+    table.add_row("示例2", "示例2的描述")
+    table.add_row("示例3", "示例3的描述")
+
+    console.print(table)
+
+{% elif cookiecutter.project_type == 'Web Service' %}
+# Web服务特定命令
+@app.command()
+def serve(
+    host: str = typer.Option(
+        "127.0.0.1",
+        "--host",
+        "-h",
+        help="服务器主机地址"
+    ),
+    port: int = typer.Option(
+        8000,
+        "--port",
+        "-p",
+        help="服务器端口"
+    ),
+    reload: bool = typer.Option(
+        True,
+        "--reload/--no-reload",
+        help="启用/禁用自动重载"
+    ),
+):
+    """启动Web服务。"""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[bold red]错误[/bold red]: uvicorn未安装，请先安装: pip install uvicorn")
+        return
+
+    console.print(Panel(
+        f"启动服务器在 [bold]http://{host}:{port}[/bold]",
+        title="{{cookiecutter.project_slug}} Web服务",
+        border_style="green",
+    ))
+
+    uvicorn.run(
+        "{{cookiecutter.project_slug}}.app:app",
+        host=host,
+        port=port,
+        reload=reload
+    )
+
+@app.command()
+def routes():
+    """显示所有API路由。"""
+    try:
+        from {{cookiecutter.project_slug}}.app import app as fastapi_app
+    except ImportError:
+        console.print("[bold red]错误[/bold red]: 未找到FastAPI应用，请确保app.py已正确配置")
+        return
+
+    table = Table(title="API路由")
+    table.add_column("方法", style="cyan")
+    table.add_column("路径", style="green")
+    table.add_column("名称", style="blue")
+
+    for route in fastapi_app.routes:
+        methods = getattr(route, "methods", ["GET"])
+        path = getattr(route, "path", "/")
+        name = getattr(route, "name", "")
+
+        for method in methods:
+            table.add_row(method, path, name or "-")
+
+    console.print(table)
+
+{% elif cookiecutter.project_type == 'Data Science' %}
+# 数据科学项目特定命令
+@app.command()
+def analyze(
+    dataset: Path = typer.Argument(
+        ...,
+        exists=True,
+        help="数据集文件路径"
+    ),
+    output_dir: Path = typer.Option(
+        Path("./output"),
+        "--output-dir",
+        "-o",
+        help="输出目录"
+    ),
+    visualize: bool = typer.Option(
+        True,
+        "--visualize/--no-visualize",
+        help="是否生成可视化"
+    ),
+):
+    """分析数据集并生成报告。"""
+    console.print(f"分析数据集: [bold]{dataset}[/bold]")
+
+    # 确保输出目录存在
+    output_dir.mkdir(exist_ok=True, parents=True)
+
+    # 这里添加数据分析逻辑
+
+    console.print(f"分析结果将保存到: [bold]{output_dir}[/bold]")
+
+    if visualize:
+        console.print("正在生成数据可视化...")
+        # 这里添加可视化生成逻辑
+
+@app.command()
+def train(
+    dataset: Path = typer.Argument(
+        ...,
+        exists=True,
+        help="训练数据集路径"
+    ),
+    model_output: Path = typer.Option(
+        Path("./models/model.pkl"),
+        "--model-output",
+        "-m",
+        help="模型输出路径"
+    ),
+    epochs: int = typer.Option(
+        10,
+        "--epochs",
+        "-e",
+        help="训练轮数"
+    ),
+):
+    """训练机器学习模型。"""
+    console.print(f"使用数据集 [bold]{dataset}[/bold] 训练模型")
+    console.print(f"训练轮数: [bold]{epochs}[/bold]")
+
+    # 确保输出目录存在
+    model_output.parent.mkdir(exist_ok=True, parents=True)
+
+    # 这里添加模型训练逻辑
+
+    console.print(f"模型将保存到: [bold]{model_output}[/bold]")
+
+{% else %}
+# 标准命令
+@app.command()
+def info():
+    """显示项目信息。"""
+    version = getattr({{cookiecutter.project_slug}}, "__version__", "未知")
+
+    console.print(Panel(
+        f"""
+项目名称: [bold]{{cookiecutter.project_slug}}[/bold]
+版本: [bold]{version}[/bold]
+描述: {{cookiecutter.project_short_description}}
+作者: {{cookiecutter.full_name}}
+        """,
+        title="项目信息",
+        border_style="blue",
+    ))
+{% endif %}
+
+# 通用命令
+@app.command()
+def version():
+    """显示版本信息。"""
+    version = getattr({{cookiecutter.project_slug}}, "__version__", "未知")
+    console.print(f"{{cookiecutter.project_slug}} v{version}")
 
 @app.command()
 def main():
-    """Console script for {{cookiecutter.project_slug}}."""
-    console.print("Replace this message by putting your code into "
-               "{{cookiecutter.project_slug}}.cli.main")
-    console.print("See Typer documentation at https://typer.tiangolo.com/")
-
-
-
-if __name__ == "__main__":
-    app()
-    # 此文件实现了{{cookiecutter.project_slug}}的命令行接口
-    # 使用Typer库构建CLI应用程序，提供友好的命令行体验
-    #
-    # 主要功能:
-    # - app = typer.Typer(): 创建Typer应用实例
-    # - @app.command()装饰器: 将函数注册为CLI命令
-    # - main(): 主命令函数，当前仅显示占位消息
-    # - console = Console(): 使用Rich库创建控制台对象，用于美化输出
-    #
-    # 使用方法:
-    # 1. 直接运行模块: python -m {{cookiecutter.project_slug}}.cli
-    # 2. 安装后使用入口点: {{cookiecutter.project_slug}}
-    #
-    # 扩展方法:
-    # - 添加新命令: 使用@app.command()装饰新函数
-    # - 添加子命令: 创建子Typer实例并挂载到主app
-    # - 添加参数: 使用typer.Argument()和typer.Option()
+    """{{cookiecutter.project_slug}} 的主命令。"""
+    console.print(Panel(
+        "使用 --help 查看可用命令",
+        title="{{cookiecutter.project_name}}",
+        border_style="green",
+    ))
 {% elif cookiecutter.command_line_interface == 'Argparse' %}
 import argparse
-import sys
+import os
+from typing import List, Optional
 
 
-def main():
+def main(args: Optional[List[str]] = None) -> int:
     """Console script for {{cookiecutter.project_slug}}."""
     parser = argparse.ArgumentParser()
     parser.add_argument('_', nargs='*')
@@ -56,18 +250,4 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-    # 此文件实现了{{cookiecutter.project_slug}}的命令行接口
-    # 使用标准库argparse构建CLI应用程序
-    #
-    # 主要功能:
-    # - parser = argparse.ArgumentParser(): 创建命令行参数解析器
-    # - main(): 主函数，解析命令行参数并执行
-    #
-    # 使用方法:
-    # 1. 直接运行模块: python -m {{cookiecutter.project_slug}}.cli
-    # 2. 安装后使用入口点: {{cookiecutter.project_slug}}
-    #
-    # 扩展方法:
-    # - 添加新参数: 使用parser.add_argument()
-    # - 添加子命令: 使用parser.add_subparsers()
 {% endif %}

@@ -25,29 +25,19 @@ Features
 --------
 
 * Testing setup with ``unittest`` and ``python setup.py test`` or ``pytest``
-* Travis-CI_: Ready for Travis Continuous Integration testing
-* Tox_ testing: Setup to easily test for Python 3.6, 3.7, 3.8
-* Sphinx_ docs: Documentation ready for generation with, for example, `Read the Docs`_
-* bump2version_: Pre-configured version bumping with a single command
-* Auto-release to PyPI_ when you push a new tag to master (optional)
-* Command line interface using Click (optional)
+* GitHub Actions: Ready for CI/CD with modern workflows
+* Tox_ testing: Setup to easily test for multiple Python versions
+* MkDocs_: Documentation ready for generation with automatic API reference
+* Rich command line interface using Typer (optional)
+* Ruff_: Code quality checks with single tool (replacing multiple tools)
+* Pre-commit_: Automatic code quality checks before commits
+* Type hints: Full support for modern Python type annotations
+* Cross-platform: Works on Windows, macOS and Linux
 
 .. _Cookiecutter: https://github.com/cookiecutter/cookiecutter
-
-Build Status
--------------
-
-Linux:
-
-.. image:: https://img.shields.io/travis/audreyfeldroy/cookiecutter-pypackage.svg
-    :target: https://travis-ci.org/audreyfeldroy/cookiecutter-pypackage
-    :alt: Linux build status on Travis CI
-
-Windows:
-
-.. image:: https://ci.appveyor.com/api/projects/status/github/audreyr/cookiecutter-pypackage?branch=master&svg=true
-    :target: https://ci.appveyor.com/project/audreyr/cookiecutter-pypackage/branch/master
-    :alt: Windows build status on Appveyor
+.. _Ruff: https://github.com/astral-sh/ruff
+.. _Pre-commit: https://pre-commit.com/
+.. _MkDocs: https://www.mkdocs.org/
 
 Quickstart
 ----------
@@ -63,20 +53,87 @@ Generate a Python package project::
 
 Then:
 
-* Create a repo and put it there.
-* Add the repo to your Travis-CI_ account.
-* Install the dev requirements into a virtualenv. (``pip install -r requirements_dev.txt``)
-* Register_ your project with PyPI.
-* Run the Travis CLI command ``travis encrypt --add deploy.password`` to encrypt your PyPI password in Travis config
-  and activate automated deployment on PyPI when you push a new tag to master branch.
-* Add the repo to your `Read the Docs`_ account + turn on the Read the Docs service hook.
-* Release your package by pushing a new tag to master.
-* Add a ``requirements.txt`` file that specifies the packages you will need for
-  your project and their versions. For more info see the `pip docs for requirements files`_.
-* Activate your project on `pyup.io`_.
+1. Change into your newly created project directory
+2. Set up your development environment::
 
-.. _`pip docs for requirements files`: https://pip.pypa.io/en/stable/user_guide/#requirements-files
-.. _Register: https://packaging.python.org/tutorials/packaging-projects/#uploading-the-distribution-archives
+    python setup.py --dev
+
+   This script will:
+
+   * Create a virtual environment
+   * Install all dependencies
+   * Set up pre-commit hooks
+   * Configure your development environment
+
+3. Create a repo and push it to GitHub::
+
+    git init
+    git add .
+    git commit -m "Initial commit"
+    git remote add origin git@github.com:your-username/your-project.git
+    git push -u origin main
+
+4. Set up GitHub Actions CI/CD:
+   * Your project already has workflows configured in `.github/workflows/`
+   * Add necessary secrets in your GitHub repository settings
+   * Push changes to trigger automatic testing
+
+5. Release your package:
+   * Update version in `src/your_package/_version.py`
+   * Create and push a tag: `git tag v0.1.0 && git push --tags`
+   * GitHub Actions will automatically publish to PyPI
+
+Project Structure
+----------------
+
+The generated project will have the following structure::
+
+    my_package/
+    ├── .github/workflows/    # CI/CD workflows
+    ├── docs/                 # Documentation files
+    ├── scripts/              # Helper scripts
+    ├── src/                  # Package source code
+    │   └── my_package/       # Main package directory
+    ├── tests/                # Test directory
+    ├── .pre-commit-config.yaml  # Pre-commit configuration
+    ├── pyproject.toml        # Project configuration
+    ├── Makefile              # Common commands
+    ├── README.md             # Project README
+    └── setup.py              # Setup script with installation helper
+
+Usage Guide
+-----------
+
+Common Tasks
+~~~~~~~~~~~
+
+Once your project is set up, here are some common tasks:
+
+**Installing for Development**::
+
+    python setup.py --dev
+
+**Running Tests**::
+
+    make test
+
+**Checking Code Quality**::
+
+    make lint
+
+**Formatting Code**::
+
+    make format
+
+**Building Documentation**::
+
+    make docs
+
+**Creating a Release**::
+
+    # Update version in src/my_package/_version.py
+    git tag v0.1.0
+    git push --tags
 
 For more details, see the `cookiecutter-pypackage tutorial`_.
 

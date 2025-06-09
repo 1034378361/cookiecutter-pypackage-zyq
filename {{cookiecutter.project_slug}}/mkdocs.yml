@@ -10,6 +10,8 @@ nav:
   - 首页: index.md
   - 安装: installation.md
   - 使用指南: usage.md
+  - 项目结构: project_structure.md
+  - 统一安装脚本: setup_script.md
   {% if cookiecutter.include_utils_lib == 'y' %}- 工具库: utils.md{% endif %}
   {% if cookiecutter.include_version_management == 'y' %}- 版本管理: version.md{% endif %}
   - 开发指南: developer_guide.md

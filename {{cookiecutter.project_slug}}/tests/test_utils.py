@@ -3,7 +3,9 @@
 import json
 import pickle
 import os
+import logging
 from pathlib import Path
+from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -22,6 +24,11 @@ from {{cookiecutter.project_slug}}.utils.data_utils import (
     clean_text,
     chunk_list,
     flatten_dict
+)
+from {{cookiecutter.project_slug}}.utils.logging_utils import (
+    setup_logger,
+    get_logger,
+    log_function_call
 )
 
 
@@ -200,3 +207,74 @@ def test_flatten_dict():
         "b_d_e": 3,
         "f": 4
     }
+
+
+def test_setup_logger():
+    """测试日志设置函数。"""
+    from {{cookiecutter.project_slug}}.utils.logging_utils import setup_logger
+
+    # 设置基本控制台日志
+    logger = setup_logger("test_logger", level=logging.DEBUG)
+    assert logger.name == "test_logger"
+    assert logger.level == logging.DEBUG
+    assert len(logger.handlers) == 1
+    assert isinstance(logger.handlers[0], logging.StreamHandler)
+
+    # 测试带文件的日志配置
+    with patch("{{cookiecutter.project_slug}}.utils.logging_utils.logging.FileHandler") as mock_file_handler:
+        mock_instance = MagicMock()
+        mock_file_handler.return_value = mock_instance
+
+        logger = setup_logger("test_file_logger", log_file="test.log")
+        assert logger.name == "test_file_logger"
+        assert len(logger.handlers) == 2  # 控制台和文件
+        mock_file_handler.assert_called_once_with("test.log", encoding="utf-8")
+
+
+def test_get_logger():
+    """测试获取日志记录器。"""
+    from {{cookiecutter.project_slug}}.utils.logging_utils import get_logger, setup_logger
+
+    # 测试获取新的日志记录器
+    with patch("{{cookiecutter.project_slug}}.utils.logging_utils.setup_logger") as mock_setup:
+        mock_setup.return_value = MagicMock()
+        logger = get_logger("new_logger")
+        mock_setup.assert_called_once_with("new_logger")
+
+    # 测试获取已存在的日志记录器
+    existing_logger = setup_logger("existing_logger")
+    with patch("{{cookiecutter.project_slug}}.utils.logging_utils.setup_logger") as mock_setup:
+        logger = get_logger("existing_logger")
+        mock_setup.assert_not_called()
+        assert logger is existing_logger
+
+
+def test_log_function_call():
+    """测试函数调用日志装饰器。"""
+    from {{cookiecutter.project_slug}}.utils.logging_utils import log_function_call
+
+    # 创建模拟logger
+    mock_logger = MagicMock()
+
+    # 定义测试函数
+    @log_function_call(mock_logger, log_args=True)
+    def test_func(arg1, arg2, kwarg1=None):
+        return arg1 + arg2
+
+    # 调用并验证日志记录
+    result = test_func(1, 2, kwarg1="test")
+    assert result == 3
+    mock_logger.debug.assert_called_once()
+
+    # 测试异常情况
+    mock_logger.reset_mock()
+
+    @log_function_call(mock_logger)
+    def failing_func():
+        raise ValueError("测试错误")
+
+    with pytest.raises(ValueError):
+        failing_func()
+
+    mock_logger.debug.assert_called_once()
+    mock_logger.exception.assert_called_once()

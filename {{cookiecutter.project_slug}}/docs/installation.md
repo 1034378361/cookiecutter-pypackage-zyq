@@ -22,25 +22,79 @@ pip install {{ cookiecutter.project_slug }}
 git clone git://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}
 ```
 
-或者下载 [压缩包](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/archive/master.zip)：
-
-```bash
-curl -OJL https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/tarball/master
-```
-
-获取源码后，您可以使用Poetry安装它：
+获取源码后，您可以使用统一安装脚本来设置您的环境：
 
 ```bash
 cd {{ cookiecutter.project_slug }}
-poetry install
+python setup.py
 ```
 
-## 开发安装
+这个脚本会自动:
 
-如果您想参与 {{ cookiecutter.project_name }} 的开发，可以安装带有开发依赖的版本：
+1. 检测您的操作系统和Python版本
+2. 创建虚拟环境
+3. 安装项目依赖
+4. 配置开发环境
+
+您可以使用以下选项：
+
+- 使用 `--dev` 选项安装开发依赖：
+
+  ```bash
+  python setup.py --dev
+  ```
+
+- 使用 `--yes` 或 `-y` 选项自动确认所有提示：
+
+  ```bash
+  python setup.py --yes
+  ```
+
+## 使用Makefile
+
+项目还提供了Makefile，可以使用以下命令进行安装：
 
 ```bash
-git clone git://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}
-cd {{ cookiecutter.project_slug }}
-poetry install --with dev
+# 安装基本版本
+make install
+
+# 安装开发版本
+make dev-install
+
+# 创建虚拟环境并安装开发依赖
+make venv
+```
+
+## 环境激活
+
+安装完成后，您需要激活虚拟环境：
+
+### Windows
+
+```bash
+# CMD
+.venv\Scripts\activate.bat
+
+# PowerShell
+.venv\Scripts\Activate.ps1
+```
+
+### macOS/Linux
+
+```bash
+source .venv/bin/activate
+```
+
+激活环境后，您可以开始使用{{ cookiecutter.project_name }}进行开发。
+
+## Docker安装
+
+项目也支持使用Docker进行开发和测试：
+
+```bash
+# 构建Docker镜像
+make docker-build
+
+# 运行Docker容器
+make docker-run
 ```

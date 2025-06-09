@@ -30,15 +30,18 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: pip
 
-    - name: 安装依赖
+    - name: 安装 PDM
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade --no-cache-dir -e ".[dev]"
-        pip check
+        pip install pdm
+
+    - name: 使用 PDM 安装依赖
+      run: |
+        pdm install --dev
 
     - name: 运行测试
       run: |
-        pytest --cov=$SOURCE_DIR --cov-report=term --cov-report=xml --cov-fail-under=85 $TEST_DIR/
+        pdm run pytest --cov=$SOURCE_DIR --cov-report=term --cov-report=xml --cov-fail-under=85 $TEST_DIR/
 
     - name: 上传测试覆盖率报告
       uses: codecov/codecov-action@v3.1.4
@@ -62,15 +65,19 @@ jobs:
         python-version: "3.12"
         cache: pip
 
-    - name: 安装依赖
+    - name: 安装 PDM
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade --no-cache-dir -e ".[dev]"
+        pip install pdm
+
+    - name: 使用 PDM 安装依赖
+      run: |
+        pdm install --dev
 
     - name: 运行 Ruff 代码检查和格式检查
       run: |
-        ruff check .
-        ruff format --check .
+        pdm run ruff check .
+        pdm run ruff format --check .
 
   type-check:
     name: 类型检查
@@ -87,14 +94,18 @@ jobs:
         python-version: "3.12"
         cache: pip
 
-    - name: 安装依赖
+    - name: 安装 PDM
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade --no-cache-dir -e ".[dev]"
+        pip install pdm
+
+    - name: 使用 PDM 安装依赖
+      run: |
+        pdm install --dev
 
     - name: 类型检查（Mypy）
       run: |
-        mypy --config-file pyproject.toml \
+        pdm run mypy --config-file pyproject.toml \
           --show-error-codes \
           --pretty \
           --warn-redundant-casts \

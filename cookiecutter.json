@@ -1,30 +1,16 @@
 {
-  "full_name": "Audrey Roy Greenfeld",
-  "email": "audreyr@example.com",
-  "github_username": "audreyr",
-  "project_name": "Python Boilerplate",
+  "full_name": "Zhou Yuanqi",
+  "email": "zyq1034378361@gmail.com",
+  "github_username": "1034378361",
+  "project_name": "PythonProject",
   "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '_').replace('-', '_') }}",
-  "project_short_description": "Python Boilerplate contains all the boilerplate you need to create a Python package.",
-  "pypi_username": "{{ cookiecutter.github_username }}",
+  "project_short_description": "Python项目模板，包含创建Python包所需的所有基础结构。",
   "version": "0.1.0",
-  "python_min_version": "3.8",
-  "use_pytest": "y",
-  "add_pyup_badge": "n",
-  "include_github_actions": "y",
-  "include_pre_commit": "y",
-  "include_changelog_gen": "y",
-  "include_devcontainer": "y",
-  "include_dependabot": "y",
-  "include_docker": "y",
-  "include_cursor_rules": "y",
+  "python_version": ["3.10", "3.11", "3.12"],
+  "project_type": ["Standard Library", "CLI Tool", "Web Service", "Data Science", "Custom"],
   "command_line_interface": ["Typer", "Argparse", "No command-line interface"],
-  "create_author_file": "y",
   "open_source_license": ["MIT license", "BSD license", "ISC license", "Apache Software License 2.0", "GNU General Public License v3", "Not open source"],
-  "dependency_pyyaml": "y",
-  "dependency_rich": "y",
-  "include_utils_lib": "y",
-  "include_version_management": "y",
-  "__gh_slug": "{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}",
+  
   "_copy_without_render": [
     ".github/workflows/*.yml",
     "docs/_includes/*.md",
@@ -32,7 +18,35 @@
     "docs/contributing.md",
     "docs/api/*.md",
     "mkdocs.yml"
-  ]
+  ],
+  
+  "_prompts": {
+    "full_name": "您的全名 (用于项目元数据)",
+    "email": "您的电子邮箱地址 (用于项目元数据)",
+    "github_username": "您的GitHub用户名 (用于生成项目链接)",
+    "project_name": "项目名称 (将自动转换为项目目录名)",
+    "project_short_description": "项目简短描述 (用于README和项目元数据)",
+    "version": "初始版本号 (遵循语义化版本规范)",
+    "python_version": "目标Python版本",
+    "project_type": "项目类型 (决定生成的项目结构和依赖)",
+    "command_line_interface": "命令行接口框架",
+    "open_source_license": "开源许可证类型"
+  },
+  
+  "_descriptions": {
+    "project_type": {
+      "Standard Library": "标准Python库结构，适合开发一般用途的包",
+      "CLI Tool": "命令行工具项目结构，预配置CLI框架",
+      "Web Service": "Web服务项目结构，包含API框架配置",
+      "Data Science": "数据科学项目结构，包含常用数据分析库",
+      "Custom": "自定义项目结构，最小化预配置"
+    },
+    "command_line_interface": {
+      "Typer": "现代Python CLI框架，基于类型注解",
+      "Argparse": "Python标准库中的CLI工具",
+      "No command-line interface": "不使用命令行接口"
+    }
+  }
 }
 
 

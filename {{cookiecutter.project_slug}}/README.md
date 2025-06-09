@@ -1,4 +1,4 @@
-# {{ cookiecutter.project_name }}
+# {{ cookiecutter.display_name }}
 
 {% if cookiecutter.open_source_license != 'Not open source' -%}
 [![PyPI](https://img.shields.io/pypi/v/{{ cookiecutter.project_slug }}.svg)](https://pypi.python.org/pypi/{{ cookiecutter.project_slug }})
@@ -24,7 +24,7 @@
 ## 特性
 
 * 现代化依赖管理:
-  * 使用Poetry管理依赖和构建
+  * 使用PDM管理依赖和构建
   * 精确依赖版本锁定
   * 分组依赖管理
   * 简化发布流程
@@ -105,22 +105,61 @@
 
 ## 快速开始
 
-### 安装
+### 环境设置
 
-安装Poetry依赖管理工具：
+本项目提供了便捷的环境设置脚本，可根据不同操作系统安装必要的开发工具：
+
+#### Linux/macOS 用户
+
+使用提供的安装脚本：
 
 ```bash
-curl -sSL https://install.python-poetry.org | python3 -
+# 安装pyenv和PDM
+./install.sh
+```
+
+#### Windows 用户
+
+使用PowerShell脚本：
+
+```powershell
+# 以管理员权限运行安装脚本
+./setup-windows.ps1
+```
+
+或者使用Makefile：
+
+```bash
+# 安装pyenv-win
+make install-pyenv
+
+# 安装PDM
+make pdm-install
+
+# 一键安装所有开发工具
+make setup
+```
+
+### 安装
+
+手动安装PDM依赖管理工具：
+
+```bash
+# Linux/macOS
+curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -
+
+# Windows (PowerShell)
+(Invoke-WebRequest -Uri https://pdm.fming.dev/install-pdm.py -UseBasicParsing).Content | py -
 ```
 
 安装本项目：
 
 ```bash
 # 安装项目及其依赖
-poetry install
+pdm install
 
 # 安装开发依赖
-poetry install --with dev
+pdm install -dG dev
 ```
 
 ### 使用
@@ -136,13 +175,13 @@ result = somefunction()
 
 ```bash
 # 运行测试
-poetry run pytest
+pdm run pytest
 
 # 代码格式化
-poetry run make format
+pdm run make format
 
 # 代码检查
-poetry run make lint
+pdm run make lint
 ```
 
 ## 功能列表
@@ -151,4 +190,4 @@ poetry run make lint
 
 ## 贡献者
 
-本项目使用 [Cookiecutter](https://github.com/audreyr/cookiecutter) 和 [audreyr/cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage) 项目模板创建。
+本项目使用 [Cookiecutter](https://github.com/audreyr/cookiecutter) 和 [audreyr/cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage) 项目模板修改后创建。

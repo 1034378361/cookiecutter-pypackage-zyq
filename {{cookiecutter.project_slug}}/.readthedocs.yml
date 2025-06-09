@@ -10,7 +10,7 @@ mkdocs:
 
 # 设置Python环境
 python:
-  version: "{{cookiecutter.python_min_version}}"
+  version: "{{cookiecutter.python_version}}"
   install:
     - method: pip
       path: .
