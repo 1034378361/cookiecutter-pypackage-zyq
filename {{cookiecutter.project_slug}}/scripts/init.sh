@@ -11,20 +11,20 @@ if [ ! -d .git ]; then
   git init
 fi
 
-# 安装poetry
-if ! command -v poetry &> /dev/null; then
-  log "安装poetry..."
-  pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple poetry
-  log "poetry安装完成"
+# 安装PDM
+if ! command -v pdm &> /dev/null; then
+  log "安装PDM..."
+  pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple pdm
+  log "PDM安装完成"
 else
-  log "poetry已安装，跳过。"
+  log "PDM已安装，跳过。"
 fi
 
-log "配置poetry国内源和并行加速..."
-# 配置poetry国内源和并行加速
-poetry config repositories.aliyun https://mirrors.aliyun.com/pypi/simple/
-poetry config installer.parallel true
-log "poetry配置完成"
+log "配置PDM国内源..."
+# 配置PDM国内源
+pdm config pypi.url https://mirrors.aliyun.com/pypi/simple/
+pdm config install.cache false
+log "PDM配置完成"
 
 # 安装pre-commit
 if ! command -v pre-commit &> /dev/null; then
@@ -37,8 +37,8 @@ fi
 
 # 安装项目依赖
 if [ -f pyproject.toml ]; then
-  log "检测到pyproject.toml，使用poetry安装依赖..."
-  poetry install --no-interaction --with dev
+  log "检测到pyproject.toml，使用PDM安装依赖..."
+  pdm install --dev
   log "项目依赖安装完成"
 elif [ -f requirements.txt ]; then
   log "检测到requirements.txt，使用pip安装依赖..."

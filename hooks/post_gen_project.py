@@ -444,10 +444,10 @@ if __name__ == '__main__':
     
     # 根据项目类型设置项目
     setup_project_by_type()
-    
+
     # 规范化.gitattributes行尾
     normalize_gitattributes()
-    
+
     # 初始化git仓库
     if shutil.which("git") is None:
         warning("未检测到git，请先安装Git后再使用本项目的版本控制功能")
@@ -459,10 +459,10 @@ if __name__ == '__main__':
             warning(f"初始化git仓库失败: {e}")
     else:
         info("当前目录已是git仓库，跳过初始化")
-    
+
     # 创建.python-version文件
     create_python_version_file()
-    
+
     # 检测pyenv是否安装
     if not check_pyenv_installed():
         warning("未检测到pyenv安装")
@@ -477,7 +477,7 @@ if __name__ == '__main__':
         if isinstance(selected_version, list):
             selected_version = selected_version[0]
         info(f"pyenv已安装，您可以运行: pyenv install {selected_version}")
-    
+
     # 检测PDM是否安装
     if not check_pdm_installed():
         warning("未检测到PDM包管理器")
@@ -486,7 +486,7 @@ if __name__ == '__main__':
         warning("或访问 https://pdm.fming.dev/latest/#installation 查看其他安装方式")
     else:
         info("PDM已安装，项目可以直接使用PDM进行依赖管理")
-    
+
     # 项目创建完成提示
     success("\n项目 {{ cookiecutter.project_name }} 创建成功!")
     success(f"项目路径: {os.path.abspath('.')}")
