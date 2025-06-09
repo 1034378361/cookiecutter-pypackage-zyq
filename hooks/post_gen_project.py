@@ -505,8 +505,41 @@ if __name__ == '__main__':
             if not any(cursor_dir.iterdir()):
                 cursor_dir.rmdir()
 
-    # 恢复MkDocs特殊语法
-    # restore_mkdocs_syntax()
+    # 创建.python-version文件
+    python_version = "{{ cookiecutter.python_version }}"
+    with open('.python-version', 'w') as f:
+        f.write(f"{python_version}\n")
+    print(f"已创建 .python-version 文件，设置为 Python {python_version}")
+
+    # 检测pyenv是否已安装
+    def is_pyenv_installed():
+        """检查系统是否安装了pyenv"""
+        return shutil.which("pyenv") is not None
+
+    if not is_pyenv_installed():
+        print("""
+            警告: 未检测到pyenv，建议安装pyenv来管理Python版本。
+            安装指南:
+            - Windows: https://github.com/pyenv-win/pyenv-win#installation
+            - macOS: brew install pyenv
+            - Linux: curl https://pyenv.run | bash
+
+            安装pyenv后，请运行:
+                pyenv install {python_version}
+                cd {project_dir}  # 进入项目目录
+                # .python-version文件已经创建，pyenv会自动使用指定版本
+            """.format(python_version=python_version, project_dir=os.path.basename(os.getcwd())))
+    else:
+        # 检查是否已安装指定的Python版本
+        try:
+            versions_output = subprocess.check_output(["pyenv", "versions"], universal_newlines=True)
+            if python_version not in versions_output:
+                print(f"提示: 系统中尚未安装Python {python_version}，请运行:")
+                print(f"    pyenv install {python_version}")
+            else:
+                print(f"检测到系统中已安装Python {python_version}，将通过.python-version文件自动激活该环境。")
+        except Exception as e:
+            print(f"检查pyenv版本时出错: {e}")
 
     # 自动初始化git仓库
     def is_git_repo(path: str) -> bool:

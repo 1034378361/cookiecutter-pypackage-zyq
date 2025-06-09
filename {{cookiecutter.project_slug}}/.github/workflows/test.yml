@@ -30,11 +30,31 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: pip
 
-    - name: 安装依赖
+{% if cookiecutter.package_manager == "Poetry" %}
+    - name: 安装 Poetry
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade --no-cache-dir -e ".[dev]"
+        pip install poetry
+        poetry --version
+
+    - name: 安装依赖
+      run: |
+        poetry config virtualenvs.create false
+        poetry install --with dev
         pip check
+{% else %}
+    - name: 安装 PDM
+      run: |
+        python -m pip install --upgrade pip
+        pip install pdm
+        pdm --version
+
+    - name: 安装依赖
+      run: |
+        pdm config python.use_venv false
+        pdm install --dev
+        pip check
+{% endif %}
 
     - name: 运行测试
       run: |
@@ -62,10 +82,29 @@ jobs:
         python-version: "3.12"
         cache: pip
 
-    - name: 安装依赖
+{% if cookiecutter.package_manager == "Poetry" %}
+    - name: 安装 Poetry
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade --no-cache-dir -e ".[dev]"
+        pip install poetry
+        poetry --version
+
+    - name: 安装依赖
+      run: |
+        poetry config virtualenvs.create false
+        poetry install --with dev
+{% else %}
+    - name: 安装 PDM
+      run: |
+        python -m pip install --upgrade pip
+        pip install pdm
+        pdm --version
+
+    - name: 安装依赖
+      run: |
+        pdm config python.use_venv false
+        pdm install --dev
+{% endif %}
 
     - name: 运行 Ruff 代码检查和格式检查
       run: |
@@ -87,10 +126,29 @@ jobs:
         python-version: "3.12"
         cache: pip
 
-    - name: 安装依赖
+{% if cookiecutter.package_manager == "Poetry" %}
+    - name: 安装 Poetry
       run: |
         python -m pip install --upgrade pip
-        pip install --upgrade --no-cache-dir -e ".[dev]"
+        pip install poetry
+        poetry --version
+
+    - name: 安装依赖
+      run: |
+        poetry config virtualenvs.create false
+        poetry install --with dev
+{% else %}
+    - name: 安装 PDM
+      run: |
+        python -m pip install --upgrade pip
+        pip install pdm
+        pdm --version
+
+    - name: 安装依赖
+      run: |
+        pdm config python.use_venv false
+        pdm install --dev
+{% endif %}
 
     - name: 类型检查（Mypy）
       run: |
