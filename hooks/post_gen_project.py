@@ -200,6 +200,49 @@ if __name__ == '__main__':
         if travis_file.exists():
             travis_file.unlink()
 
+        # 根据包管理器选择，选择对应的工作流文件
+        if '{{ cookiecutter.include_github_actions }}' == 'y':
+            github_workflows_dir = pathlib.Path('.github', 'workflows')
+            if github_workflows_dir.exists():
+                # 检查工作流文件是否存在
+                pdm_workflow = github_workflows_dir / 'pdm-test.yml'
+                poetry_workflow = github_workflows_dir / 'poetry-test.yml'
+                test_workflow = github_workflows_dir / 'test.yml'
+
+                # 如果选择PDM，复制PDM工作流文件并删除Poetry工作流文件
+                if '{{ cookiecutter.package_manager }}' == 'PDM':
+                    if pdm_workflow.exists() and test_workflow.exists():
+                        with open(pdm_workflow, 'r') as source:
+                            with open(test_workflow, 'w') as target:
+                                target.write(source.read())
+                        print("已选择PDM作为包管理器，复制相应的GitHub Actions工作流配置")
+
+                    # 删除Poetry工作流文件
+                    if poetry_workflow.exists():
+                        poetry_workflow.unlink()
+                        print("已删除Poetry工作流文件")
+
+                    # 删除PDM源文件
+                    if pdm_workflow.exists():
+                        pdm_workflow.unlink()
+
+                # 如果选择Poetry，复制Poetry工作流文件并删除PDM工作流文件
+                else:  # Poetry
+                    if poetry_workflow.exists() and test_workflow.exists():
+                        with open(poetry_workflow, 'r') as source:
+                            with open(test_workflow, 'w') as target:
+                                target.write(source.read())
+                        print("已选择Poetry作为包管理器，复制相应的GitHub Actions工作流配置")
+
+                    # 删除PDM工作流文件
+                    if pdm_workflow.exists():
+                        pdm_workflow.unlink()
+                        print("已删除PDM工作流文件")
+
+                    # 删除Poetry源文件
+                    if poetry_workflow.exists():
+                        poetry_workflow.unlink()
+
     # 如果不使用pre-commit，移除相关文件
     if '{{ cookiecutter.include_pre_commit }}' != 'y':
         precommit_file = pathlib.Path('.pre-commit-config.yaml')

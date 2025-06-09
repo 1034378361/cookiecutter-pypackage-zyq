@@ -109,6 +109,31 @@ class TestBasicFunctionality:
         ) as result:
             assert not (result.project_path / "LICENSE").exists()
 
+    def test_python_version_selection(self, cookies):
+        """测试Python版本选择功能。"""
+        # 测试选择特定Python版本
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"python_version": "3.10"}
+        ) as result:
+            # 检查.python-version文件
+            python_version_file = result.project_path / ".python-version"
+            assert python_version_file.exists()
+            assert "3.10" in python_version_file.read_text()
+
+            # 检查pyproject.toml中的Python版本设置
+            pyproject = result.project_path / "pyproject.toml"
+            content = pyproject.read_text()
+            assert 'py310' in content  # 在配置中使用的Python版本
+
+            # 检查工作流文件中的版本列表
+            workflows_dir = result.project_path / ".github" / "workflows"
+            if workflows_dir.exists():
+                test_workflow = workflows_dir / "test.yml"
+                if test_workflow.exists():
+                    workflow_content = test_workflow.read_text()
+                    assert '"3.10"' in workflow_content  # 确保版本在矩阵中
+
 
 class TestProjectConfiguration:
     """测试项目配置选项。"""
@@ -155,7 +180,9 @@ class TestProjectConfiguration:
         ) as result:
             pyproject = result.project_path / "pyproject.toml"
             content = pyproject.read_text()
-            assert 'rich = ">=' in content
+            # 支持不同包管理器的依赖格式
+            assert ('rich = ">=' in content or  # Poetry格式
+                   '"rich>=' in content)        # PDM格式
 
         # 测试不包含Rich
         with bake_in_temp_dir(
@@ -164,7 +191,58 @@ class TestProjectConfiguration:
         ) as result:
             pyproject = result.project_path / "pyproject.toml"
             content = pyproject.read_text()
-            assert 'rich = ">=' not in content
+            assert 'rich' not in content
+
+        # 测试包含PyYAML
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"dependency_pyyaml": "y"}
+        ) as result:
+            pyproject = result.project_path / "pyproject.toml"
+            content = pyproject.read_text()
+            assert ('pyyaml = ">=' in content or  # Poetry格式
+                   '"pyyaml>=' in content)       # PDM格式
+
+        # 测试不包含PyYAML
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"dependency_pyyaml": "n"}
+        ) as result:
+            pyproject = result.project_path / "pyproject.toml"
+            content = pyproject.read_text()
+            assert 'pyyaml' not in content and 'PyYAML' not in content
+
+    def test_package_manager_options(self, cookies):
+        """测试包管理器选项正确应用。"""
+        # 测试选择Poetry
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"package_manager": "Poetry"}
+        ) as result:
+            pyproject = result.project_path / "pyproject.toml"
+            content = pyproject.read_text()
+            assert '[tool.poetry]' in content
+            assert 'poetry-core' in content
+
+            # 检查Makefile是否使用poetry命令
+            makefile = result.project_path / "Makefile"
+            makefile_content = makefile.read_text()
+            assert 'poetry run' in makefile_content
+
+        # 测试选择PDM
+        with bake_in_temp_dir(
+            cookies,
+            extra_context={"package_manager": "PDM"}
+        ) as result:
+            pyproject = result.project_path / "pyproject.toml"
+            content = pyproject.read_text()
+            assert '[project]' in content
+            assert 'pdm-backend' in content
+
+            # 检查Makefile是否使用pdm命令
+            makefile = result.project_path / "Makefile"
+            makefile_content = makefile.read_text()
+            assert 'pdm run' in makefile_content
 
 
 class TestGitHubIntegration:

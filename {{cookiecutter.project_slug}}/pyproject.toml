@@ -1,3 +1,4 @@
+{% if cookiecutter.package_manager == "Poetry" %}
 [tool.poetry]
 name = "{{cookiecutter.project_slug}}"
 version = "{{cookiecutter.version}}"
@@ -72,6 +73,124 @@ types-requests = "*"
 [tool.poetry.scripts]
 {{cookiecutter.project_slug}} = "{{cookiecutter.project_slug}}.cli:app"
 {% endif %}
+
+# Mypy
+# ----
+[tool.mypy]
+files = "src"
+python_version = "{{cookiecutter.python_min_version.replace('.', '')}}"
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+strict_optional = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+allow_untyped_defs = true
+disable_error_code = "attr-defined"
+
+# Black
+# -----
+[tool.black]
+line-length = 88
+target-version = ["py{{cookiecutter.python_min_version.replace('.', '')}}"]
+include = '\.pyi?$'
+
+# Ruff
+# ----
+[tool.ruff]
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "B",  # flake8-bugbear
+    "I",  # isort
+    "D",  # pydocstyle
+]
+ignore = ["E203"]  # whitespace before ':'
+line-length = 88
+target-version = "py{{cookiecutter.python_min_version.replace('.', '')}}"
+
+[tool.ruff.pydocstyle]
+convention = "google"
+ignore = ["D107", "D203", "D213", "D401"]
+
+# Isort
+# -----
+[tool.isort]
+profile = "black"
+line_length = 88
+skip_gitignore = true
+
+# Pytest
+# ------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"
+# 测试覆盖率配置
+addopts = "--cov=src --cov-report=term --cov-report=html --cov-report=xml"
+# 设置最低覆盖率阈值
+[tool.coverage.report]
+fail_under = 85
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise ImportError",
+]
+
+# Bandit
+# ------
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = ["B311"]  # 忽略标准库伪随机数生成器警告
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+{% else %}
+[project]
+name = "{{cookiecutter.project_slug}}"
+version = "{{cookiecutter.version}}"
+description = "{{cookiecutter.project_short_description}}"
+readme = "README.md"
+authors = [
+  {name = "{{cookiecutter.full_name}}", email = "{{cookiecutter.email}}"}
+]
+maintainers = [
+  {name = "{{cookiecutter.full_name}}", email = "{{cookiecutter.email}}"}
+]
+license = {text = "{{cookiecutter.open_source_license}}"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: {{cookiecutter.open_source_license}}",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">={{cookiecutter.python_min_version}}"
+dependencies = [
+  {% if cookiecutter.command_line_interface.lower() == "typer" -%}
+  "typer = \">=0.9.0\"",
+  {%- endif %}
+  {% if cookiecutter.dependency_rich == 'y' -%}
+  "rich = \">=10.0.0\"",
+  {%- endif %}
+  {% if cookiecutter.dependency_pyyaml == 'y' -%}
+  "pyyaml = \">=6.0\"",
+  {%- endif %}
+]
 
 # Mypy
 # ----
