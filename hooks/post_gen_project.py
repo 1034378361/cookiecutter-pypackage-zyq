@@ -590,16 +590,15 @@ if __name__ == '__main__':
 
     # 检测PDM是否安装
     pdm_installed = check_pdm_installed()
-    if not pdm_installed:
-        # 在pre_gen_project.py中已经显示了警告，这里只提供安装指导
-        warning("本项目使用PDM进行依赖管理")
-        info("使用以下方式一键安装PDM环境：")
-        info("   - Linux/macOS: 执行 ./init.sh")
-        info("   - Windows: 双击运行 run_init.bat")
-        info("   - 任何系统: python init.py")
-        info("详细文档请访问: https://pdm.fming.dev/latest/#installation\n")
-    else:
-        info("PDM已安装，项目可以直接使用PDM进行依赖管理\n")
+    # 在pre_gen_project.py中已经显示了警告，这里只提供安装指导
+    warning("本项目使用PDM进行依赖管理")
+    info("使用以下方式一键安装PDM环境：")
+    info("   - Linux/macOS: 执行1. dos2unix ./scripts/init.sh")
+    info("   - Linux/macOS: 执行2. ./scripts/init.sh")
+    info("   - Windows: 双击运行 run_init.bat")
+    info("   - 任何系统: python init.py")
+    info("详细文档请访问: https://pdm.fming.dev/latest/#installation\n")
+    info("PDM已安装，项目可以直接使用PDM进行依赖管理\n")
 
     # 项目创建完成提示
     success("项目 {{ cookiecutter.project_name }} 创建成功!")
