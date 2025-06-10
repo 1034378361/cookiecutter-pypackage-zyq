@@ -1,7 +1,7 @@
 # Cookiecutter PyPackage ZYQ 模板
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/downloads/)
-[![测试](https://github.com/yourusername/cookiecutter-pypackage-zyq/actions/workflows/test.yml/badge.svg)](https://github.com/yourusername/cookiecutter-pypackage-zyq/actions/workflows/test.yml)
+[![测试](https://github.com/1034378361/cookiecutter-pypackage-zyq/actions/workflows/test.yml/badge.svg)](https://github.com/1034378361/cookiecutter-pypackage-zyq/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 基于 [Cookiecutter](https://github.com/cookiecutter/cookiecutter) 的现代化 Python 包模板，提供完整的开发工具链和最佳实践。
@@ -37,7 +37,7 @@ pip install cookiecutter
 使用此模板创建新项目：
 
 ```bash
-cookiecutter https://github.com/yourusername/cookiecutter-pypackage-zyq
+cookiecutter https://github.com/1034378361/cookiecutter-pypackage-zyq
 ```
 
 或者从本地使用：

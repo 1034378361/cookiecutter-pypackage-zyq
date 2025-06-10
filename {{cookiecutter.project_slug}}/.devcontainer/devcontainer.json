@@ -35,11 +35,18 @@
           "python.linting.enabled": true,
           "python.linting.mypyEnabled": true,
           "python.linting.ruffEnabled": true,
+          "terminal.integrated.defaultProfile.linux": "bash",
           "terminal.integrated.profiles.linux": {
             "bash": {
-              "path": "bash"
+              "path": "bash",
+              "icon": "terminal-bash"
             }
-          }
+          },
+          "terminal.integrated.scrollback": 10000,
+          "terminal.integrated.fontFamily": "monospace",
+          "terminal.integrated.cursorBlinking": true,
+          "terminal.integrated.cursorStyle": "line",
+          "terminal.integrated.enableBell": false
         },
         "extensions": [
           "ms-python.python",
@@ -55,4 +62,4 @@
         ]
       }
     }
-  }
+}
