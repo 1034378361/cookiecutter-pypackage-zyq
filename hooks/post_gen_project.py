@@ -65,35 +65,39 @@ def configure_dependencies():
     original_content = content
     
     try:
-        # 尝试更安全的方法修改TOML文件
-        # 1. 处理核心依赖部分，确保正则表达式匹配准确
-        core_deps_section = re.search(r'\[project\.dependencies\](.*?)(?=^\[|\Z)', content, re.DOTALL | re.MULTILINE)
-        if core_deps_section:
-            # 获取基础依赖部分
-            core_deps = core_deps_section.group(1)
+        # 1. 处理核心依赖部分
+        # 查找dependencies列表部分
+        dependencies_section = re.search(r'dependencies\s*=\s*\[(.*?)\]', content, re.DOTALL)
+        if dependencies_section:
+            # 获取依赖列表内容
+            deps_list_content = dependencies_section.group(1)
+            # 将内容分割成单独的依赖项
+            deps_lines = [line.strip() for line in deps_list_content.split(',') if line.strip()]
             
-            # 处理项目类型相关依赖
-            if project_type != "Web Service":
-                core_deps = re.sub(r'fastapi.*?\n', '', core_deps)
-                core_deps = re.sub(r'uvicorn.*?\n', '', core_deps)
-                core_deps = re.sub(r'pydantic.*?\n', '', core_deps)
+            # 筛选依赖项
+            filtered_deps = []
+            for dep in deps_lines:
+                dep_cleaned = dep.strip()
                 
-            if project_type != "Data Science":
-                core_deps = re.sub(r'numpy.*?\n', '', core_deps)
-                core_deps = re.sub(r'pandas.*?\n', '', core_deps)
-                core_deps = re.sub(r'matplotlib.*?\n', '', core_deps)
-                core_deps = re.sub(r'scikit-learn.*?\n', '', core_deps)
+                # 移除不需要的依赖
+                if project_type != "Web Service" and any(pkg in dep_cleaned for pkg in ["fastapi", "uvicorn", "pydantic"]):
+                    continue
+                if project_type != "Data Science" and any(pkg in dep_cleaned for pkg in ["numpy", "pandas", "matplotlib", "scikit-learn"]):
+                    continue
+                if cli_interface == "No command-line interface" and "typer" in dep_cleaned:
+                    continue
+                if cli_interface == "Argparse" and "typer" in dep_cleaned:
+                    continue
+                
+                # 保留有效的依赖
+                filtered_deps.append(dep_cleaned)
             
-            # 处理命令行接口相关依赖
-            if cli_interface == "No command-line interface":
-                # 如果不使用命令行接口，移除Typer依赖
-                core_deps = re.sub(r'typer.*?\n', '', core_deps)
-            elif cli_interface == "Argparse":
-                # 如果使用标准库argparse，移除Typer依赖
-                core_deps = re.sub(r'typer.*?\n', '', core_deps)
+            # 重新构建依赖列表
+            new_deps_content = ",\n    ".join(filtered_deps)
+            new_deps_section = f"dependencies = [\n    {new_deps_content}\n]"
             
             # 替换原始依赖部分
-            content = content.replace(core_deps_section.group(0), f"[project.dependencies]{core_deps}")
+            content = content.replace(dependencies_section.group(0), new_deps_section)
         
         # 2. 重新构建可选依赖部分
         # 找到optional-dependencies部分的开始
@@ -589,7 +593,10 @@ if __name__ == '__main__':
     if not pdm_installed:
         # 在pre_gen_project.py中已经显示了警告，这里只提供安装指导
         warning("本项目使用PDM进行依赖管理")
-        warning("安装指南：访问 https://pdm.fming.dev/latest/#installation 查看其安装方式\n")
+        info("使用脚本一键安装：")
+        info("   - 工程目录下运行: python scripts/init.py")
+        info("   - Windows下还可以双击: scripts/init.cmd")
+        info("详细文档请访问: https://pdm.fming.dev/latest/#installation\n")
     else:
         info("PDM已安装，项目可以直接使用PDM进行依赖管理\n")
 

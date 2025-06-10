@@ -32,10 +32,8 @@ fi
 # 安装PDM
 if ! command -v pdm &> /dev/null; then
   log "安装PDM..."
-  curl -sSLO https://pdm-project.org/install-pdm.py
-  curl -sSL https://pdm-project.org/install-pdm.py.sha256 | shasum -a 256 -c -
-  # 验证通过后运行安装程序
-  python3 install-pdm.py [options]
+  # 使用pip安装PDM
+  pip install --no-cache-dir pdm
   log "PDM安装完成"
 else
   log "PDM已安装，跳过。"
@@ -56,7 +54,8 @@ else
   log "pre-commit已安装，跳过。"
 fi
 
-# 安装项目依赖
+# 确保安装开发环境依赖
+log "安装项目开发环境依赖..."
 if [ -f pyproject.toml ]; then
   log "检测到pyproject.toml，使用PDM安装依赖..."
   pdm install -d
@@ -64,6 +63,10 @@ if [ -f pyproject.toml ]; then
 elif [ -f requirements.txt ]; then
   log "检测到requirements.txt，使用pip安装依赖..."
   pip install --no-cache-dir -r requirements.txt
+  if [ -f requirements-dev.txt ]; then
+    log "安装开发环境依赖..."
+    pip install --no-cache-dir -r requirements-dev.txt
+  fi
   log "项目依赖安装完成"
 else
   log "未检测到依赖文件，跳过依赖安装。"
