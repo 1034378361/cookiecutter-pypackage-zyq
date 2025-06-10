@@ -3,9 +3,7 @@
 [![PyPI](https://img.shields.io/pypi/v/{{ cookiecutter.project_slug }}.svg)](https://pypi.python.org/pypi/{{ cookiecutter.project_slug }})
 [![测试](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml/badge.svg)](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml)
 [![文档](https://img.shields.io/badge/文档-GitHub_Pages-blue)](https://{{ cookiecutter.github_username }}.github.io/{{ cookiecutter.project_slug }}/)
-{% if cookiecutter.include_coverage_badge == "y" -%}
 [![代码覆盖率](https://codecov.io/gh/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/branch/main/graph/badge.svg)](https://codecov.io/gh/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }})
-{%- endif %}
 
 {{ cookiecutter.project_short_description }}
 
@@ -25,16 +23,14 @@
   * 自动测试、代码风格检查
   * 自动发布到PyPI
 
-{% if cookiecutter.include_mypy == "y" -%}
 * 类型检查:
   * 严格的mypy类型验证
   * 类型覆盖率报告
   * 预配置的类型检查设置
-{%- endif %}
 
-{% if cookiecutter.include_cli == "y" -%}
+{% if cookiecutter.command_line_interface != "No command-line interface" -%}
 * 命令行接口:
-  * 基于{{ cookiecutter.cli_framework }}的命令行工具
+  * 基于{{ cookiecutter.command_line_interface }}的命令行工具
   * 自动生成帮助文档
   * 命令补全支持
   * 友好的错误提示
@@ -52,19 +48,16 @@
   * 自动化文档生成
   * 版本管理工具
 
-{% if cookiecutter.use_docker == "y" -%}
 * Docker支持:
   * 优化的Dockerfile
   * Docker Compose配置
   * 多阶段构建流程
   * 生产环境就绪配置
-{%- endif %}
 
 ## 快速开始
 
 ### 安装
 
-{% if cookiecutter.use_docker == "y" -%}
 #### 使用Docker
 
 ```bash
@@ -76,7 +69,6 @@ docker-compose up -d
 ```
 
 #### 手动安装
-{%- endif %}
 
 从PyPI安装:
 
@@ -105,7 +97,7 @@ result = example_function()
 print(result)
 ```
 
-{% if cookiecutter.include_cli == "y" -%}
+{% if cookiecutter.command_line_interface != "No command-line interface" -%}
 ### 命令行使用
 
 安装后，可以直接使用命令行工具:
@@ -149,10 +141,8 @@ make format
 # 代码质量检查
 make lint
 
-{% if cookiecutter.include_mypy == "y" -%}
 # 类型检查
 make type-check
-{%- endif %}
 
 # 构建文档
 make docs

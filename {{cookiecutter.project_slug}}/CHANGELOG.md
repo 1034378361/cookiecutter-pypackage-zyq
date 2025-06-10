@@ -1,52 +1,47 @@
-# 变更日志
+# 更新日志
 
-所有项目的显著变更都将记录在此文件中。
+本项目遵循[语义化版本](https://semver.org/lang/zh-CN/)规范。
 
-此项目遵循[语义化版本](https://semver.org/lang/zh-CN/)，并使用[约定式提交](https://www.conventionalcommits.org/zh-hans/)格式。
+## [未发布]
 
-## 未发布
+### 新增
 
-### 新功能
+- 初始项目结构设置
+- 基础功能实现
 
-* 项目初始化
+## [0.1.0] - {% now 'utc', '%Y-%m-%d' %}
 
-## 如何更新此文件
+### 新增
 
-此文件可以通过以下方式自动更新:
+- 首次发布版本
+- 核心功能实现
+{% if cookiecutter.command_line_interface != "No command-line interface" %}- 基本命令行接口{% endif %}
+- 完整的测试覆盖
+- 项目文档
 
-### 自动更新 (GitHub Actions)
+### 变更
 
-以下事件将触发CHANGELOG自动更新:
-- 推送新标签 (如 `v1.0.0`)
-- 合并PR到主分支
-- 手动触发GitHub Actions工作流
+- 无
 
-### 与发布流程集成
+### 修复
 
-发布流程会自动使用CHANGELOG内容:
-- 推送标签发布到PyPI时，自动提取对应版本的CHANGELOG部分
-- GitHub Release的发布说明会自动使用提取的CHANGELOG内容
-- 标签之间的所有变更会被正确分类并格式化
+- 无
 
-### 自定义配置
+### 安全
 
-您可以通过创建配置文件来自定义CHANGELOG的生成:
-- 支持`.changelog.yml`、`.changelog.json`等格式
-- 可自定义提交类型映射
-- 可自定义未知类型的默认分类
-- 可自定义CHANGELOG标题和格式
+- 无
 
-### 手动命令
+## 更新日志格式
 
-也可以使用以下命令手动更新:
+更新日志条目应按以下分类组织：
 
-```bash
-# 从最新标签生成
-make changelog
+- **新增**：添加的新功能
+- **变更**：对现有功能的更改
+- **弃用**：即将被移除的功能
+- **移除**：已被移除的功能
+- **修复**：修复的错误
+- **安全**：安全漏洞修复
 
-# 从最初提交生成完整历史
-make changelog-init
+----
 
-# 使用自定义配置文件
-python scripts/generate_changelog.py --config path/to/config.yml
-```
+本更新日志格式基于[Keep a Changelog](https://keepachangelog.com/zh-CN/1.0.0/)。
