@@ -1,4 +1,4 @@
-"""Top-level package for {{ cookiecutter.display_name }}."""
+"""Top-level package for {{ cookiecutter.project_name }}."""
 
 import os
 import logging

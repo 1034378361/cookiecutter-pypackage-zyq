@@ -28,11 +28,11 @@ import {{ cookiecutter.project_slug }}
 - [使用指南](usage.md) - 如何使用此项目
 - [统一安装脚本](setup_script.md) - setup.py脚本说明
 - [项目结构](project_structure.md) - 项目目录结构说明
-{% if cookiecutter.include_utils_lib == 'y' %}- [工具库](utils.md) - 项目提供的工具函数{% endif %}
-{% if cookiecutter.include_version_management == 'y' %}- [版本管理](version.md) - 版本管理方法{% endif %}
+- [工具库](utils.md) - 项目提供的工具函数
+- [版本管理](version.md) - 版本管理方法
 - [开发指南](developer_guide.md) - 参与项目开发
-{% if cookiecutter.include_dependabot == 'y' %}- [Dependabot](dependabot.md) - 依赖管理{% endif %}
-{% if cookiecutter.include_docker == 'y' %}- [Docker](docker.md) - Docker相关指南{% endif %}
+- [Dependabot](dependabot.md) - 依赖管理
+- [Docker](docker.md) - Docker相关指南
 - [API参考](api/index.md) - 详细API文档
 - [贡献指南](contributing.md) - 如何贡献代码
 - [更新日志](history.md) - 项目变更历史

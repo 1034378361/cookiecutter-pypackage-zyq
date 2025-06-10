@@ -4,7 +4,6 @@
 
 ## 开发环境设置
 
-{% if cookiecutter.include_devcontainer == 'y' %}
 ### 使用开发容器 (推荐)
 
 本项目包含基于**CentOS 7.5.1804**的开发容器配置，与生产环境保持一致，确保开发测试在实际部署时的行为一致性。
@@ -26,16 +25,13 @@
 - 预安装开发工具：pytest, black, isort, ruff, mypy等
 - 预配置的VS Code设置和扩展
 - 自动安装项目依赖
-{% if cookiecutter.include_pre_commit == 'y' %}
 - 自动设置pre-commit钩子
-{% endif %}
 
 #### CentOS 7特别说明
 - 系统采用较旧但更稳定的CentOS 7.5版本
 - 默认Python为手动编译的3.10.6版本
 - CentOS 7上编译安装Python 3.10需要更长时间，请耐心等待
 - 一些系统工具和库版本较老，与生产环境保持一致
-{% endif %}
 
 ### 手动设置
 
@@ -54,12 +50,10 @@
    pip install -e ".[dev]"
    ```
 
-{% if cookiecutter.include_pre_commit == 'y' %}
 3. 安装pre-commit钩子：
    ```bash
    pre-commit install
    ```
-{% endif %}
 
 ## 开发工作流程
 
@@ -92,7 +86,6 @@ make lint
 make format
 ```
 
-{% if cookiecutter.include_changelog_gen == 'y' %}
 ### 更新CHANGELOG
 ```bash
 # 从最新标签生成
@@ -101,7 +94,6 @@ make changelog
 # 生成完整历史
 make changelog-init
 ```
-{% endif %}
 
 ### 构建文档
 ```bash
@@ -142,7 +134,7 @@ mypy --html-report mypy-report src
 ```toml
 [tool.mypy]
 files = "src"
-python_version = "{{cookiecutter.python_min_version.replace('.', '')}}"
+python_version = "{{cookiecutter.python_version.replace('.', '')}}"
 warn_unused_configs = true
 disallow_untyped_defs = true
 disallow_incomplete_defs = true

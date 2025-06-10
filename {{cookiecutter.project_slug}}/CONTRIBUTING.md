@@ -89,21 +89,15 @@ Before you submit a pull request, check that it meets these guidelines:
 
 1. The pull request should include tests.
 2. If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring, and add the feature to the list in README.md.
-3. The pull request should work for Python {{ cookiecutter.python_min_version }} and above. Check the GitHub Actions workflow results for your PR to ensure tests pass for all supported Python versions.
+3. The pull request should work for Python {{ cookiecutter.python_version }} and above. Check the GitHub Actions workflow results for your PR to ensure tests pass for all supported Python versions.
 
 ## Tips
 
 To run a subset of tests:
 
-{% if cookiecutter.use_pytest == 'y' %}
 ```bash
 poetry run pytest tests/test_specific_feature.py
 ```
-{% else %}
-```bash
-poetry run python -m unittest tests.test_specific_feature
-```
-{%- endif %}
 
 ## Deploying
 

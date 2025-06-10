@@ -18,6 +18,10 @@ def print_colored(message, color="reset"):
         "purple": "\033[95m",
         "cyan": "\033[96m"
     }
+    # 使用colors.get(color, colors['reset'])获取指定颜色代码，如果不存在则使用默认颜色
+    # 在消息前后添加颜色代码和重置代码，实现彩色输出
+    # 在支持ANSI颜色的终端（如Linux/macOS终端、Windows的PowerShell或CMD）中可以输出彩色文本
+    # 但在某些环境（如某些CI/CD系统、重定向到文件时）可能不支持颜色
     print(f"{colors.get(color, colors['reset'])}{message}{colors['reset']}")
 
 def error(message):
@@ -202,85 +206,32 @@ if __name__ == "__main__":
 **响应**:
 ```json
 {
-  "app_name": "{{ cookiecutter.project_name }}",
-  "version": "x.y.z",
+  "name": "{{ cookiecutter.project_name }}",
   "description": "{{ cookiecutter.project_short_description }}",
-  "author": "{{ cookiecutter.full_name }}"
-}
-```
-
-## 项目端点
-
-### GET /api/items
-
-获取所有项目列表。
-
-**响应**:
-```json
-{
-  "items": [
-    {
-      "id": 1,
-      "name": "项目1",
-      "description": "这是项目1的描述"
-    },
-    {
-      "id": 2,
-      "name": "项目2",
-      "description": "这是项目2的描述"
-    }
-  ]
-}
-```
-
-### GET /api/items/{item_id}
-
-获取指定ID的项目详情。
-
-**参数**:
-- `item_id`: 项目ID (整数)
-
-**响应**:
-```json
-{
-  "item": {
-    "id": 1,
-    "name": "项目1",
-    "description": "这是项目1的描述"
-  }
-}
-```
-
-**错误响应** (404):
-```json
-{
-  "detail": "项目ID {item_id} 不存在"
+  "version": "x.y.z",
+  "author": "{{ cookiecutter.full_name }}",
+  "endpoints": ["/", "/health", "/info"]
 }
 ```
 ''')
-        info("已创建Web服务API文档")
+        info("已创建API文档")
     
     elif project_type == "Data Science":
         info("设置数据科学项目结构")
-        # 确保data_analysis.py存在，已在模板中创建
         
-        # 清理非数据科学特定文件
-        app_file = pathlib.Path('src', '{{ cookiecutter.project_slug }}', 'app.py')
-        if app_file.exists():
-            app_file.unlink()
-        
-        # 创建数据和notebooks目录
+        # 创建数据目录结构
         data_dir = pathlib.Path('data')
         data_dir.mkdir(exist_ok=True)
         
+        for subdir in ['raw', 'processed', 'external']:
+            (data_dir / subdir).mkdir(exist_ok=True)
+        
+        # 创建notebooks目录
         notebooks_dir = pathlib.Path('notebooks')
         notebooks_dir.mkdir(exist_ok=True)
         
-        # 创建空的.gitkeep文件，以便空目录也能提交到git
-        (data_dir / '.gitkeep').touch()
-        
-        # 创建示例Jupyter notebook
-        example_notebook = notebooks_dir / 'example_analysis.ipynb'
+        # 创建示例notebook
+        example_notebook = notebooks_dir / 'exploration.ipynb'
         with open(example_notebook, 'w') as f:
             f.write('''{
  "cells": [
@@ -288,16 +239,7 @@ if __name__ == "__main__":
    "cell_type": "markdown",
    "metadata": {},
    "source": [
-    "# {{ cookiecutter.project_name }} 分析示例\\n\\n此notebook展示了如何使用{{ cookiecutter.project_slug }}进行数据分析。"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": null,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "import sys\\nfrom pathlib import Path\\n\\n# 将项目根目录添加到PATH中，以便导入包\\nproject_root = Path.cwd().parent\\nsys.path.insert(0, str(project_root))"
+    "# {{ cookiecutter.project_name }} - 数据探索\\n\\n此Notebook用于数据探索和分析。"
    ]
   },
   {
@@ -440,8 +382,9 @@ if __name__ == "__main__":
         info(f"使用开源许可证: {{ cookiecutter.open_source_license }}")
 
 if __name__ == '__main__':
+    print_colored("\n===================== 创建成功 =====================", "green")
     success("开始项目后处理...")
-    
+
     # 根据项目类型设置项目
     setup_project_by_type()
 
@@ -450,15 +393,15 @@ if __name__ == '__main__':
 
     # 初始化git仓库
     if shutil.which("git") is None:
-        warning("未检测到git，请先安装Git后再使用本项目的版本控制功能")
+        warning("未检测到git，请先安装Git后再使用本项目的版本控制功能\n")
     elif not is_git_repo(os.getcwd()):
         try:
             subprocess.run(["git", "init", "-b", "main"], check=True)
-            success("已初始化git仓库")
+            success("已初始化git仓库\n")
         except Exception as e:
-            warning(f"初始化git仓库失败: {e}")
+            warning(f"初始化git仓库失败: {e}\n")
     else:
-        info("当前目录已是git仓库，跳过初始化")
+        info("当前目录已是git仓库，跳过初始化\n")
 
     # 创建.python-version文件
     create_python_version_file()
@@ -471,28 +414,28 @@ if __name__ == '__main__':
         selected_version = "{{ cookiecutter.python_version }}"
         if isinstance(selected_version, list):
             selected_version = selected_version[0]
-        warning(f"安装完成后，请在项目目录运行: pyenv install {selected_version}")
+        warning(f"安装完成后，请在项目目录运行: pyenv install {selected_version}\n")
     else:
         selected_version = "{{ cookiecutter.python_version }}"
         if isinstance(selected_version, list):
             selected_version = selected_version[0]
-        info(f"pyenv已安装，您可以运行: pyenv install {selected_version}")
+        info(f"pyenv已安装，您可以运行: pyenv install {selected_version}\n")
 
     # 检测PDM是否安装
-    if not check_pdm_installed():
-        warning("未检测到PDM包管理器")
-        warning("本项目使用PDM进行依赖管理，强烈建议安装")
-        warning("安装指南: 执行 `curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -`")
-        warning("或访问 https://pdm.fming.dev/latest/#installation 查看其他安装方式")
+    pdm_installed = check_pdm_installed()
+    if not pdm_installed:
+        # 在pre_gen_project.py中已经显示了警告，这里只提供安装指导
+        warning("本项目使用PDM进行依赖管理")
+        warning("安装指南：访问 https://pdm.fming.dev/latest/#installation 查看其安装方式\n")
     else:
-        info("PDM已安装，项目可以直接使用PDM进行依赖管理")
+        info("PDM已安装，项目可以直接使用PDM进行依赖管理\n")
 
     # 项目创建完成提示
-    success("\n项目 {{ cookiecutter.project_name }} 创建成功!")
+    success("项目 {{ cookiecutter.project_name }} 创建成功!")
     success(f"项目路径: {os.path.abspath('.')}")
     success("接下来，建议执行:")
     print_colored(f"  1. cd {{ cookiecutter.project_slug }}", "cyan")
-    if not check_pdm_installed():
+    if not pdm_installed:
         print_colored("  2. 安装PDM: curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -", "cyan")
         print_colored("  3. pdm install -d  # 安装所有依赖（包括开发依赖）", "cyan")
         print_colored("  4. 开始开发吧!", "cyan")

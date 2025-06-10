@@ -29,7 +29,7 @@ env:
   SOURCE_DIR: src
   TEST_DIR: tests
   DEFAULT_PYTHON: '3.12'
-  MIN_PYTHON: '{{cookiecutter.python_min_version}}'
+  MIN_PYTHON: '{{cookiecutter.python_version}}'
 
 jobs:
   # 测试任务矩阵 - 在多个Python版本上运行测试
@@ -40,11 +40,11 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ['{{cookiecutter.python_min_version}}', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['{{cookiecutter.python_version}}', '3.9', '3.10', '3.11', '3.12']
         include:
           # 在Windows上测试最低和最新的Python版本
           - os: windows-latest
-            python-version: '{{cookiecutter.python_min_version}}'
+            python-version: '{{cookiecutter.python_version}}'
           - os: windows-latest
             python-version: '3.12'
           # 在macOS上测试最新的Python版本

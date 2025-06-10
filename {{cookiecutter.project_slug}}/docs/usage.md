@@ -14,7 +14,6 @@ import {{ cookiecutter.project_slug }}
 print({{ cookiecutter.project_slug }}.__version__)
 ```
 
-{% if cookiecutter.command_line_interface.lower() == 'typer' %}
 ## 命令行接口
 
 {{ cookiecutter.project_slug }} 提供了命令行接口:
@@ -23,9 +22,6 @@ print({{ cookiecutter.project_slug }}.__version__)
 {{ cookiecutter.project_slug }} --help
 ```
 
-{% endif %}
-
-{% if cookiecutter.include_utils_lib == 'y' %}
 ## 工具函数
 
 文件操作示例:
@@ -78,7 +74,6 @@ logger.error("发生错误")
 ```
 
 更多示例请参考 [工具库](utils.md) 页面。
-{% endif %}
 
 ## 开发工作流
 

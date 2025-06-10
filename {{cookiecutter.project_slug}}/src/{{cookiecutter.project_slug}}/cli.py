@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 import {{cookiecutter.project_slug}}
 
-{% if cookiecutter.command_line_interface == 'Typer' %}
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -16,7 +15,6 @@ app = typer.Typer(
 )
 console = Console()
 
-{% if cookiecutter.project_type == 'CLI Tool' %}
 # CLI工具特定命令
 @app.command()
 def process(
@@ -64,7 +62,6 @@ def list_examples():
 
     console.print(table)
 
-{% elif cookiecutter.project_type == 'Web Service' %}
 # Web服务特定命令
 @app.command()
 def serve(
@@ -130,7 +127,6 @@ def routes():
 
     console.print(table)
 
-{% elif cookiecutter.project_type == 'Data Science' %}
 # 数据科学项目特定命令
 @app.command()
 def analyze(
@@ -196,7 +192,6 @@ def train(
 
     console.print(f"模型将保存到: [bold]{model_output}[/bold]")
 
-{% else %}
 # 标准命令
 @app.command()
 def info():
@@ -213,7 +208,6 @@ def info():
         title="项目信息",
         border_style="blue",
     ))
-{% endif %}
 
 # 通用命令
 @app.command()
@@ -230,24 +224,12 @@ def main():
         title="{{cookiecutter.project_name}}",
         border_style="green",
     ))
-{% elif cookiecutter.command_line_interface == 'Argparse' %}
-import argparse
-import os
-from typing import List, Optional
 
 
-def main(args: Optional[List[str]] = None) -> int:
-    """Console script for {{cookiecutter.project_slug}}."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument('_', nargs='*')
-    args = parser.parse_args()
-
-    print("Arguments: " + str(args._))
-    print("Replace this message by putting your code into "
-          "{{cookiecutter.project_slug}}.cli.main")
-    return 0
+def cli():
+    """Entry point for console script."""
+    app()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
-{% endif %}
+    sys.exit(cli())

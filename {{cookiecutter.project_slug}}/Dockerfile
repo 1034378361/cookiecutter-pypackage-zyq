@@ -1,7 +1,7 @@
 ###############
 # 构建阶段
 ###############
-FROM python:{{cookiecutter.python_min_version}}-slim-bookworm AS builder
+FROM python:{{cookiecutter.python_version}}-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -26,7 +26,7 @@ RUN pip wheel --no-cache-dir --wheel-dir /app/wheels -e .
 ###############
 # 最终运行阶段
 ###############
-FROM python:{{cookiecutter.python_min_version}}-slim-bookworm
+FROM python:{{cookiecutter.python_version}}-slim-bookworm
 
 # 创建非root用户
 RUN groupadd -g 1000 appgroup && \

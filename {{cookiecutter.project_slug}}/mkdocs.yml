@@ -1,8 +1,8 @@
 site_name: {{ cookiecutter.project_name }}
 site_description: {{ cookiecutter.project_short_description }}
 site_author: {{ cookiecutter.full_name }}
-repo_url: https://github.com/{{cookiecutter.__gh_slug}}
-repo_name: {{cookiecutter.__gh_slug}}
+repo_url: https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}
+repo_name: {{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}
 edit_uri: edit/master/docs/
 
 # 导航结构
@@ -12,15 +12,15 @@ nav:
   - 使用指南: usage.md
   - 项目结构: project_structure.md
   - 统一安装脚本: setup_script.md
-  {% if cookiecutter.include_utils_lib == 'y' %}- 工具库: utils.md{% endif %}
-  {% if cookiecutter.include_version_management == 'y' %}- 版本管理: version.md{% endif %}
+  - 工具库: utils.md
+  - 版本管理: version.md
   - 开发指南: developer_guide.md
-  {% if cookiecutter.include_dependabot == 'y' %}- Dependabot: dependabot.md{% endif %}
-  {% if cookiecutter.include_docker == 'y' %}- Docker: docker.md{% endif %}
+  - Dependabot: dependabot.md
+  - Docker: docker.md
   - API参考:
     - api/index.md
   - 贡献指南: contributing.md
-  {% if cookiecutter.create_author_file == 'y' %}- 贡献者: authors.md{% endif %}
+  - 贡献者: authors.md
   - 更新日志: history.md
 
 # 主题配置
@@ -84,4 +84,4 @@ copyright: "Copyright &copy; {% now 'local', '%Y' %} {{ cookiecutter.full_name }
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/{{cookiecutter.__gh_slug}}
+      link: https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}

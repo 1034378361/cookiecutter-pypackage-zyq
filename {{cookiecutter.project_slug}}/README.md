@@ -1,25 +1,15 @@
-# {{ cookiecutter.display_name }}
+# {{ cookiecutter.project_name }}
 
-{% if cookiecutter.open_source_license != 'Not open source' -%}
 [![PyPI](https://img.shields.io/pypi/v/{{ cookiecutter.project_slug }}.svg)](https://pypi.python.org/pypi/{{ cookiecutter.project_slug }})
 
-{% if cookiecutter.include_github_actions == 'y' -%}
-[![Tests](https://github.com/{{ cookiecutter.__gh_slug }}/actions/workflows/test.yml/badge.svg)](https://github.com/{{ cookiecutter.__gh_slug }}/actions/workflows/test.yml)
-{% endif -%}
+[![Tests](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml/badge.svg)](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml)
 
 [![文档](https://img.shields.io/badge/文档-GitHub_Pages-blue)](https://{{ cookiecutter.github_username }}.github.io/{{ cookiecutter.project_slug }}/)
 
-{% if cookiecutter.add_pyup_badge == 'y' -%}
-[![Updates](https://pyup.io/repos/github/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/shield.svg)](https://pyup.io/repos/github/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/)
-{% endif -%}
-{% endif %}
-
 {{ cookiecutter.project_short_description }}
 
-{% if cookiecutter.open_source_license != 'Not open source' -%}
 * 开源协议: {{ cookiecutter.open_source_license }}
 * 文档: [https://{{ cookiecutter.github_username }}.github.io/{{ cookiecutter.project_slug }}](https://{{ cookiecutter.github_username }}.github.io/{{ cookiecutter.project_slug }})
-{% endif %}
 
 ## 特性
 
@@ -29,31 +19,20 @@
   * 分组依赖管理
   * 简化发布流程
 
-{% if cookiecutter.include_github_actions == 'y' -%}
 * GitHub Actions CI: 自动测试、代码风格检查
 * GitHub 自动发布: 通过标签发布到PyPI
-{% endif %}
 
-{% if cookiecutter.include_utils_lib == 'y' -%}
 * 内置工具库:
   * 文件处理工具 (JSON/YAML/Pickle)
   * 数据处理工具 (字符串、日期、字典处理)
   * 日志工具 (控制台/文件/轮转日志)
-{% endif %}
 
-{% if cookiecutter.include_version_management == 'y' -%}
 * 智能版本管理:
   * 自动从Git标签读取版本
   * 支持开发和分发版本管理
-{% endif %}
 
-{% if cookiecutter.command_line_interface.lower() == 'typer' -%}
 * 命令行工具: 基于Typer的命令行接口
-{% elif cookiecutter.command_line_interface.lower() == 'argparse' -%}
-* 命令行工具: 基于Argparse的命令行接口
-{% endif %}
 
-{% if cookiecutter.include_pre_commit == 'y' -%}
 * 代码质量工具:
   * Pre-commit钩子自动检查代码风格和质量
   * 集成Black/isort/ruff/mypy/bandit等工具
@@ -65,9 +44,7 @@
     * 配置最低覆盖率阈值(85%)
     * CI流程中强制检查覆盖率
     * 生成HTML和XML格式覆盖率报告
-{% endif %}
 
-{% if cookiecutter.include_changelog_gen == 'y' -%}
 * 自动化变更日志:
   * 从git提交历史自动生成CHANGELOG
   * 根据约定式提交格式分类变更
@@ -79,23 +56,18 @@
   * 与发布流程集成:
     * 发布到PyPI时自动生成发布说明
     * GitHub Release说明自动使用CHANGELOG内容
-{% endif %}
 
-{% if cookiecutter.include_devcontainer == 'y' -%}
 * 开发容器配置:
   * 标准化开发环境，确保一致性体验
   * VS Code开发容器支持
   * 预配置Python开发工具和扩展
   * 无需手动配置即可开始开发
-{% endif %}
 
-{% if cookiecutter.include_dependabot == 'y' -%}
 * 依赖自动更新:
   * GitHub Dependabot集成
   * 自动检测并更新过期依赖
   * 智能分组相关依赖更新
   * 维护Python包、GitHub Actions和Docker镜像
-{% endif %}
 
 * Docker支持:
   * 多阶段构建优化的应用镜像

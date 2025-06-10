@@ -216,8 +216,8 @@ if __name__ == '__main__':
     check_license_choice()
     
     # 检查其他必要工具
-    check_required_tools()
+    # check_required_tools()
     
-    print_colored("\n==================== 验证完成 ====================", "green")
+    print_colored("\n===================== 验证完成 =====================", "green")
     success("项目前置验证通过！即将开始生成项目...")
     print("")
