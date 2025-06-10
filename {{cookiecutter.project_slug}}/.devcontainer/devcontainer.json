@@ -4,15 +4,13 @@
       "dockerfile": "Dockerfile",
       "context": "..",
       "args": {
-        "PYTHON_VERSION": "3.11"
+        "PYTHON_VERSION": "{{cookiecutter.python_version}}"
       }
     },
     "workspaceFolder": "/home/vscode",
     "remoteUser": "vscode",
     "shutdownAction": "stopContainer",
 
-    // 👇 命令可以使用相对路径和 PATH 中的命令名
-    "postCreateCommand": "./scripts/init.sh",
     "mounts": [
       {
         "source": "${localWorkspaceFolder}",
@@ -20,24 +18,29 @@
         "type": "bind"
       }
     ],
-    "settings": {
-      "editor.formatOnSave": true,
-      "python.formatting.provider": "black",
-      "python.linting.enabled": true,
-      "python.linting.mypyEnabled": true,
-      "python.linting.ruffEnabled": true,
-      "terminal.integrated.profiles.linux": {
-        "bash": {
-          "path": "bash"
-        }
-      }
+    "remoteEnv": {
+      "GPG_TTY": "",
+      "GNUPGHOME": "/tmp/.gnupg"
     },
-    "forwardPorts": [8000, 8080],
     "containerEnv": {
-      "PYTHONUNBUFFERED": "1"
+      "PYTHONUNBUFFERED": "1",
+      "PYTHONPATH": "/home/vscode/src",
+      "PROJECT_ENV": "development"
     },
     "customizations": {
       "vscode": {
+        "settings": {
+          "editor.formatOnSave": true,
+          "python.formatting.provider": "black",
+          "python.linting.enabled": true,
+          "python.linting.mypyEnabled": true,
+          "python.linting.ruffEnabled": true,
+          "terminal.integrated.profiles.linux": {
+            "bash": {
+              "path": "bash"
+            }
+          }
+        },
         "extensions": [
           "ms-python.python",
           "ms-python.vscode-pylance",
@@ -46,7 +49,9 @@
           "ms-python.isort",
           "charliermarsh.ruff",
           "njpwerner.autodocstring",
-          "matangover.mypy"
+          "matangover.mypy",
+          "ms-azuretools.vscode-docker",
+          "ms-toolsai.jupyter-renderers"
         ]
       }
     }

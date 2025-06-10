@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     image: {{cookiecutter.project_slug}}:latest
     container_name: {{cookiecutter.project_slug}}
+    # 添加自动重启策略
+    restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
@@ -22,12 +24,19 @@ services:
     # 安全设置
     security_opt:
       - no-new-privileges:true
+    # 添加日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     # 如果是命令行工具，可以取消下面的注释并调整命令
     # command: ["--config", "/app/config/config.yml"]
 
   # 示例: 如果你的应用需要数据库
   # db:
   #   image: postgres:16-bookworm
+  #   restart: unless-stopped
   #   environment:
   #     - POSTGRES_USER=postgres
   #     - POSTGRES_PASSWORD=postgres
@@ -42,6 +51,24 @@ services:
   #     timeout: 5s
   #     retries: 5
   #     start_period: 10s
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
+# 添加网络配置
+networks:
+  default:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+    # 增加网络安全性
+    driver_opts:
+      com.docker.network.bridge.name: {{cookiecutter.project_slug}}_net
+      com.docker.network.driver.mtu: 1500
 
 # 如使用数据库，取消下面的注释
 # volumes:

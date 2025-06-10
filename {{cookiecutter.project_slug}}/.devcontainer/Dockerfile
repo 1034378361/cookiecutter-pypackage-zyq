@@ -1,4 +1,5 @@
-FROM python:3.11
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}
 
 ARG USERNAME=vscode
 ARG USER_UID=1000
@@ -25,7 +26,8 @@ RUN codename=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2) && \
 # 创建非 root 用户
 RUN groupadd --gid $USER_GID $USERNAME && \
     useradd --uid $USER_UID --gid $USER_GID -m $USERNAME && \
-    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers && \
+    chown -R $USERNAME:$USERNAME /home/$USERNAME
 
 # 切换到普通用户
 USER $USERNAME
@@ -38,7 +40,5 @@ ENV PATH="/home/${USERNAME}/.local/bin:${PATH}"
 RUN touch ~/.bashrc && \
     echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 
-# 确保权限
-RUN chown -R $USERNAME:$USERNAME /home/$USERNAME
 
 
