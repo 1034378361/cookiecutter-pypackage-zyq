@@ -593,9 +593,10 @@ if __name__ == '__main__':
     if not pdm_installed:
         # 在pre_gen_project.py中已经显示了警告，这里只提供安装指导
         warning("本项目使用PDM进行依赖管理")
-        info("使用脚本一键安装：")
-        info("   - 工程目录下运行: python scripts/init.py")
-        info("   - Windows下还可以双击: scripts/init.cmd")
+        info("使用以下方式一键安装PDM环境：")
+        info("   - Linux/macOS: 执行 ./init.sh")
+        info("   - Windows: 双击运行 run_init.bat")
+        info("   - 任何系统: python init.py")
         info("详细文档请访问: https://pdm.fming.dev/latest/#installation\n")
     else:
         info("PDM已安装，项目可以直接使用PDM进行依赖管理\n")
@@ -606,7 +607,7 @@ if __name__ == '__main__':
     success("接下来，建议执行:")
     print_colored(f"  1. cd {{ cookiecutter.project_slug }}", "cyan")
     if not pdm_installed:
-        print_colored("  2. 安装PDM: curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -", "cyan")
+        print_colored("  2. 根据您的系统运行相应的初始化脚本(run_init.bat/init.sh/init.py)", "cyan")
         print_colored("  3. pdm install -d  # 安装所有依赖（包括开发依赖）", "cyan")
         print_colored("  4. 开始开发吧!", "cyan")
     else:
