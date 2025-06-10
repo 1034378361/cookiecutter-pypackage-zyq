@@ -1,118 +1,152 @@
-# Contributing
+# 贡献指南
 
-Contributions are welcome, and they are greatly appreciated! Every little bit helps, and credit will always be given.
+感谢您考虑为 {{ cookiecutter.project_name }} 做出贡献！本文档提供了参与项目开发的指南和最佳实践。
 
-You can contribute in many ways:
+## 开发环境设置
 
-## Types of Contributions
-
-### Report Bugs
-
-Report bugs at https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/issues.
-
-If you are reporting a bug, please include:
-
-* Your operating system name and version.
-* Any details about your local setup that might be helpful in troubleshooting.
-* Detailed steps to reproduce the bug.
-
-### Fix Bugs
-
-Look through the GitHub issues for bugs. Anything tagged with "bug" and "help wanted" is open to whoever wants to implement it.
-
-### Implement Features
-
-Look through the GitHub issues for features. Anything tagged with "enhancement" and "help wanted" is open to whoever wants to implement it.
-
-### Write Documentation
-
-{{ cookiecutter.project_name }} could always use more documentation, whether as part of the official {{ cookiecutter.project_name }} docs, in docstrings, or even on the web in blog posts, articles, and such.
-
-### Submit Feedback
-
-The best way to send feedback is to file an issue at https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/issues.
-
-If you are proposing a feature:
-
-* Explain in detail how it would work.
-* Keep the scope as narrow as possible, to make it easier to implement.
-* Remember that this is a volunteer-driven project, and that contributions are welcome :)
-
-## Get Started!
-
-Ready to contribute? Here's how to set up `{{ cookiecutter.project_slug }}` for local development.
-
-1. Fork the `{{ cookiecutter.project_slug }}` repo on GitHub.
-2. Clone your fork locally:
+1. Fork项目仓库
+2. 克隆你的fork到本地：
    ```bash
-   git clone git@github.com:your_name_here/{{ cookiecutter.project_slug }}.git
+   git clone https://github.com/YOUR_USERNAME/{{ cookiecutter.project_slug }}.git
+   cd {{ cookiecutter.project_slug }}
+   ```
+3. 设置上游远程：
+   ```bash
+   git remote add upstream https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.git
+   ```
+4. 创建虚拟环境（推荐使用venv或conda）
+5. 安装开发依赖：
+   ```bash
+   pip install -e ".[dev]"
+   ```
+6. 安装pre-commit钩子：
+   ```bash
+   pre-commit install
    ```
 
-3. Ensure you have Poetry installed. If not, install it:
-   ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
-   ```
+## 开发工作流
 
-4. Install your local copy and development dependencies:
+1. 确保你的main分支是最新的：
    ```bash
-   cd {{ cookiecutter.project_slug }}/
-   poetry install --with dev
+   git checkout main
+   git pull upstream main
    ```
-
-5. Create a branch for local development:
+2. 创建新的功能分支：
    ```bash
-   git checkout -b name-of-your-bugfix-or-feature
+   git checkout -b feature/your-feature-name
    ```
-   Now you can make your changes locally.
-
-6. When you're done making changes, check that your changes pass the quality checks and tests:
-   ```bash
-   poetry run make lint
-   poetry run make test
-   # Or run tests for all Python environments
-   poetry run make test-all
-   ```
-
-7. Commit your changes and push your branch to GitHub:
+3. 进行更改并提交：
    ```bash
    git add .
-   git commit -m "Your detailed description of your changes."
-   git push origin name-of-your-bugfix-or-feature
+   git commit -m "feat: 添加了新功能"
    ```
-   请遵循我们的[提交消息规范](./COMMIT_CONVENTION.md)，以确保变更日志能够正确生成。
+4. 推送到你的fork：
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+5. 创建Pull Request
 
-8. Submit a pull request through the GitHub website.
+## 代码风格
 
-## Pull Request Guidelines
+本项目使用以下工具维护代码质量：
 
-Before you submit a pull request, check that it meets these guidelines:
+* **Black**：自动格式化代码
+* **isort**：整理导入语句
+* **Ruff**：代码风格和错误检查
+* **mypy**：静态类型检查
 
-1. The pull request should include tests.
-2. If the pull request adds functionality, the docs should be updated. Put your new functionality into a function with a docstring, and add the feature to the list in README.md.
-3. The pull request should work for Python {{ cookiecutter.python_version }} and above. Check the GitHub Actions workflow results for your PR to ensure tests pass for all supported Python versions.
-
-## Tips
-
-To run a subset of tests:
-
-```bash
-poetry run pytest tests/test_specific_feature.py
-```
-
-## Deploying
-
-A reminder for the maintainers on how to deploy. Make sure all your changes are committed (including an entry in CHANGELOG.md). Then run:
+在提交前，请确保代码通过了所有检查：
 
 ```bash
-poetry version patch  # possible: major / minor / patch / etc.
-git commit -am "Bump version"
-git tag v$(poetry version -s)
-git push
-git push --tags
+make lint
 ```
 
-GitHub Actions will then deploy to PyPI if tests pass.
+或者单独运行：
 
-## Code of Conduct
+```bash
+# 格式化代码
+make format
 
-Please note that this project is released with a [Contributor Code of Conduct](CODE_OF_CONDUCT.md). By participating in this project you agree to abide by its terms.
+# 类型检查
+make type-check
+```
+
+## 提交消息规范
+
+我们遵循[约定式提交](https://www.conventionalcommits.org/)规范：
+
+```
+<类型>[可选作用域]: <描述>
+
+[可选正文]
+
+[可选脚注]
+```
+
+常用类型：
+
+* **feat**：新功能
+* **fix**：修复bug
+* **docs**：文档变更
+* **style**：不影响代码含义的变更（空白、格式化等）
+* **refactor**：代码重构
+* **test**：添加或修正测试
+* **chore**：构建过程或辅助工具变动
+
+示例：
+```
+feat(cli): 添加新的命令行选项
+
+添加了--verbose选项，用于提供更详细的输出信息。
+
+关闭 #123
+```
+
+## 测试
+
+任何新功能或修复都应该包含测试。我们使用pytest进行测试：
+
+```bash
+# 运行所有测试
+pytest
+
+# 运行特定测试
+pytest tests/test_specific.py
+
+# 运行带覆盖率的测试
+pytest --cov={{ cookiecutter.project_slug }}
+```
+
+## 文档
+
+请为所有新功能和API更改添加文档：
+
+1. 更新相关模块、类或函数的文档字符串
+2. 如果需要，添加或更新用户指南
+3. 确保文档可以正确构建：
+   ```bash
+   make docs
+   ```
+
+## 发布流程
+
+项目维护者负责发布新版本：
+
+1. 更新版本号（在src/{{ cookiecutter.project_slug }}/_version.py中）
+2. 更新CHANGELOG.md
+3. 创建新标签并推送
+4. GitHub Actions将自动构建并发布到PyPI
+
+## 问题和功能请求
+
+* 使用GitHub Issues报告问题或请求功能
+* 在创建新issue前，请检查是否已有类似issue
+* 提供尽可能详细的信息，包括重现步骤和预期行为
+
+## 行为准则
+
+请参阅我们的[行为准则](CODE_OF_CONDUCT.md)，以了解我们的社区标准。
+
+## 许可证
+
+通过提交拉取请求，您同意您的贡献将在项目许可证下发布。

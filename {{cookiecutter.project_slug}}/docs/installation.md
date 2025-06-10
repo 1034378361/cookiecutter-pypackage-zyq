@@ -1,100 +1,205 @@
 # 安装指南
 
-## 稳定版本
+本文档提供了{{ cookiecutter.project_name }}的多种安装方法和环境配置说明。
 
-要安装 {{ cookiecutter.project_name }}，请在终端中运行以下命令：
+## 系统要求
+
+* Python {{ cookiecutter.requires_python if cookiecutter.requires_python is defined else '3.8' }}或更高版本
+* pip 21.0或更高版本（推荐）
+
+## 从PyPI安装（推荐）
+
+最简单的安装方法是使用pip从PyPI安装：
 
 ```bash
 pip install {{ cookiecutter.project_slug }}
 ```
 
-这是安装 {{ cookiecutter.project_name }} 的首选方法，因为它将始终安装最新的稳定版本。
-
-如果您还没有安装 [pip](https://pip.pypa.io)，可以参考 [Python安装指南](http://docs.python-guide.org/en/latest/starting/installation/) 获取帮助。
+这将安装{{ cookiecutter.project_name }}的最新稳定版本。
 
 ## 从源码安装
 
-{{ cookiecutter.project_name }} 的源代码可以从 [GitHub仓库](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}) 下载。
-
-您可以克隆公共仓库：
+如果您需要最新的开发版本或想要参与项目开发，可以从源码安装：
 
 ```bash
-git clone git://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}
-```
-
-获取源码后，您可以使用统一安装脚本来设置您的环境：
-
-```bash
+# 克隆仓库
+git clone https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.git
 cd {{ cookiecutter.project_slug }}
-python setup.py
+
+# 安装基本包
+pip install -e .
+
+# 安装开发依赖（如果要进行开发）
+pip install -e ".[dev]"
 ```
 
-这个脚本会自动:
+## 使用虚拟环境（推荐）
 
-1. 检测您的操作系统和Python版本
-2. 创建虚拟环境
-3. 安装项目依赖
-4. 配置开发环境
+为避免依赖冲突，推荐在虚拟环境中安装：
 
-您可以使用以下选项：
-
-- 使用 `--dev` 选项安装开发依赖：
-
-  ```bash
-  python setup.py --dev
-  ```
-
-- 使用 `--yes` 或 `-y` 选项自动确认所有提示：
-
-  ```bash
-  python setup.py --yes
-  ```
-
-## 使用Makefile
-
-项目还提供了Makefile，可以使用以下命令进行安装：
+### 使用venv
 
 ```bash
-# 安装基本版本
-make install
+# 创建虚拟环境
+python -m venv venv
 
-# 安装开发版本
-make dev-install
+# 激活虚拟环境（Linux/macOS）
+source venv/bin/activate
 
-# 创建虚拟环境并安装开发依赖
-make venv
+# 激活虚拟环境（Windows）
+venv\Scripts\activate
+
+# 安装
+pip install {{ cookiecutter.project_slug }}
 ```
 
-## 环境激活
-
-安装完成后，您需要激活虚拟环境：
-
-### Windows
+### 使用conda
 
 ```bash
-# CMD
-.venv\Scripts\activate.bat
+# 创建conda环境
+conda create -n {{ cookiecutter.project_slug }} python={{ cookiecutter.requires_python if cookiecutter.requires_python is defined else '3.8' }}
+conda activate {{ cookiecutter.project_slug }}
 
-# PowerShell
-.venv\Scripts\Activate.ps1
+# 安装
+pip install {{ cookiecutter.project_slug }}
 ```
 
-### macOS/Linux
+## 特定版本安装
+
+安装特定版本：
 
 ```bash
-source .venv/bin/activate
+pip install {{ cookiecutter.project_slug }}==0.1.0
 ```
 
-激活环境后，您可以开始使用{{ cookiecutter.project_name }}进行开发。
+安装最新的开发版：
 
-## Docker安装
+```bash
+pip install --pre {{ cookiecutter.project_slug }}
+```
 
-项目也支持使用Docker进行开发和测试：
+## 离线安装
+
+对于无法访问互联网的环境，可以下载wheel包进行离线安装：
+
+1. 在有网络连接的环境中下载wheel包：
+
+```bash
+pip download {{ cookiecutter.project_slug }} -d ./packages
+```
+
+2. 将packages目录复制到目标环境并安装：
+
+```bash
+pip install --no-index --find-links=./packages {{ cookiecutter.project_slug }}
+```
+
+{% if cookiecutter.project_type == "Web Service" %}
+## 使用Docker
+
+如果您使用Docker，我们提供了预配置的Dockerfile和docker-compose.yml：
 
 ```bash
 # 构建Docker镜像
-make docker-build
+docker-compose build
 
-# 运行Docker容器
-make docker-run
+# 运行容器
+docker-compose up -d
 ```
+
+您也可以直接使用预构建的镜像：
+
+```bash
+docker pull {{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}:latest
+docker run -p 8000:8000 {{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}:latest
+```
+{% endif %}
+
+## 验证安装
+
+安装完成后，您可以验证安装是否成功：
+
+```bash
+python -c "import {{ cookiecutter.project_slug }}; print({{ cookiecutter.project_slug }}.__version__)"
+```
+
+{% if cookiecutter.command_line_interface != "No command-line interface" %}
+或者通过命令行工具检查：
+
+```bash
+{{ cookiecutter.project_slug }} --version
+```
+{% endif %}
+
+## 依赖说明
+
+{{ cookiecutter.project_name }}依赖以下主要库：
+
+* 核心依赖：自动安装
+{% if cookiecutter.command_line_interface == "Typer" %}  * Typer: 命令行接口{% elif cookiecutter.command_line_interface == "Argparse" %}  * Argparse: 命令行接口（Python标准库）{% endif %}
+  * typing-extensions: 增强的类型支持
+
+* 可选依赖：需要额外安装
+  * 开发依赖：`pip install {{ cookiecutter.project_slug }}[dev]`
+  * 文档依赖：`pip install {{ cookiecutter.project_slug }}[docs]`
+  * 测试依赖：`pip install {{ cookiecutter.project_slug }}[test]`
+
+## 常见问题
+
+### 依赖冲突
+
+如果遇到依赖冲突，尝试以下方法：
+
+```bash
+# 在隔离环境中安装
+pip install --isolated {{ cookiecutter.project_slug }}
+
+# 或强制重新安装依赖
+pip install --upgrade --force-reinstall {{ cookiecutter.project_slug }}
+```
+
+### 权限问题
+
+如果遇到权限问题，尝试：
+
+```bash
+# Linux/macOS
+pip install --user {{ cookiecutter.project_slug }}
+
+# 或使用管理员权限
+sudo pip install {{ cookiecutter.project_slug }}
+```
+
+### 安装特定Python版本
+
+如果需要为特定Python版本安装：
+
+```bash
+python3.9 -m pip install {{ cookiecutter.project_slug }}
+```
+
+## 开发环境设置
+
+如果您计划参与项目开发，请按照以下步骤设置开发环境：
+
+1. 克隆仓库并安装开发依赖：
+
+```bash
+git clone https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.git
+cd {{ cookiecutter.project_slug }}
+pip install -e ".[dev]"
+```
+
+2. 安装pre-commit钩子：
+
+```bash
+pre-commit install
+```
+
+3. 运行测试确认环境设置正确：
+
+```bash
+pytest
+```
+
+现在您已准备好开始开发！
