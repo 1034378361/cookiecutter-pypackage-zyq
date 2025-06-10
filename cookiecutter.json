@@ -18,35 +18,7 @@
     "docs/contributing.md",
     "docs/api/*.md",
     "mkdocs.yml"
-  ],
-  
-  "_prompts": {
-    "full_name": "您的全名 (用于项目元数据)",
-    "email": "您的电子邮箱地址 (用于项目元数据)",
-    "github_username": "您的GitHub用户名 (用于生成项目链接)",
-    "project_name": "项目名称 (将自动转换为项目目录名)",
-    "project_short_description": "项目简短描述 (用于README和项目元数据)",
-    "version": "初始版本号 (遵循语义化版本规范)",
-    "python_version": "目标Python版本",
-    "project_type": "项目类型 (决定生成的项目结构和依赖)",
-    "command_line_interface": "命令行接口框架",
-    "open_source_license": "开源许可证类型"
-  },
-  
-  "_descriptions": {
-    "project_type": {
-      "Standard Library": "标准Python库结构，适合开发一般用途的包",
-      "CLI Tool": "命令行工具项目结构，预配置CLI框架",
-      "Web Service": "Web服务项目结构，包含API框架配置",
-      "Data Science": "数据科学项目结构，包含常用数据分析库",
-      "Custom": "自定义项目结构，最小化预配置"
-    },
-    "command_line_interface": {
-      "Typer": "现代Python CLI框架，基于类型注解",
-      "Argparse": "Python标准库中的CLI工具",
-      "No command-line interface": "不使用命令行接口"
-    }
-  }
+  ]
 }
 
 
