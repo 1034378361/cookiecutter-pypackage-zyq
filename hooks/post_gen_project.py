@@ -40,6 +40,161 @@ def info(message):
     """打印信息"""
     print_colored(f"信息: {message}", "blue")
 
+def configure_dependencies():
+    """根据项目类型配置依赖"""
+    import re
+    
+    project_type = "{{ cookiecutter.project_type }}"
+    cli_interface = "{{ cookiecutter.command_line_interface }}"
+    # 使用绝对路径确保在任何工作目录下都能找到pyproject.toml
+    pyproject_path = os.path.join(os.getcwd(), "pyproject.toml")
+    
+    # 创建备份
+    backup_path = f"{pyproject_path}.bak"
+    try:
+        shutil.copy2(pyproject_path, backup_path)
+        info(f"已创建配置文件备份: {backup_path}")
+    except Exception as e:
+        warning(f"创建配置备份失败: {str(e)}")
+    
+    # 读取原始文件
+    with open(pyproject_path, "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    # 保存处理前的内容以便对比
+    original_content = content
+    
+    try:
+        # 尝试更安全的方法修改TOML文件
+        # 1. 处理核心依赖部分，确保正则表达式匹配准确
+        core_deps_section = re.search(r'\[project\.dependencies\](.*?)(?=^\[|\Z)', content, re.DOTALL | re.MULTILINE)
+        if core_deps_section:
+            # 获取基础依赖部分
+            core_deps = core_deps_section.group(1)
+            
+            # 处理项目类型相关依赖
+            if project_type != "Web Service":
+                core_deps = re.sub(r'fastapi.*?\n', '', core_deps)
+                core_deps = re.sub(r'uvicorn.*?\n', '', core_deps)
+                core_deps = re.sub(r'pydantic.*?\n', '', core_deps)
+                
+            if project_type != "Data Science":
+                core_deps = re.sub(r'numpy.*?\n', '', core_deps)
+                core_deps = re.sub(r'pandas.*?\n', '', core_deps)
+                core_deps = re.sub(r'matplotlib.*?\n', '', core_deps)
+                core_deps = re.sub(r'scikit-learn.*?\n', '', core_deps)
+            
+            # 处理命令行接口相关依赖
+            if cli_interface == "No command-line interface":
+                # 如果不使用命令行接口，移除Typer依赖
+                core_deps = re.sub(r'typer.*?\n', '', core_deps)
+            elif cli_interface == "Argparse":
+                # 如果使用标准库argparse，移除Typer依赖
+                core_deps = re.sub(r'typer.*?\n', '', core_deps)
+            
+            # 替换原始依赖部分
+            content = content.replace(core_deps_section.group(0), f"[project.dependencies]{core_deps}")
+        
+        # 2. 重新构建可选依赖部分
+        # 找到optional-dependencies部分的开始
+        optional_deps_section = re.search(r'^\[project\.optional-dependencies\].*?(?=^\[|\Z)', content, re.DOTALL | re.MULTILINE)
+        
+        if optional_deps_section:
+            # 提取当前dev部分的内容
+            dev_deps_match = re.search(r'dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
+            dev_deps = dev_deps_match.group(1) if dev_deps_match else ""
+            
+            # 创建新的可选依赖内容
+            new_optional_deps = "[project.optional-dependencies]\ndev = [" + dev_deps + "]\n\n"
+            
+            # 添加特定项目类型的依赖组
+            if project_type == "Web Service":
+                new_optional_deps += """# Web Service 特定依赖
+web = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+]
+
+"""
+            
+            if project_type == "Data Science":
+                new_optional_deps += """# Data Science 特定依赖
+data = [
+    "numpy>=1.24.0",
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+    "scikit-learn>=1.3.0",
+]
+
+"""
+            
+            # 添加特定项目类型的开发依赖组
+            if project_type == "Web Service":
+                web_dev_match = re.search(r'web-dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
+                if web_dev_match:
+                    web_dev_deps = web_dev_match.group(1)
+                    new_optional_deps += "web-dev = [" + web_dev_deps + "]\n\n"
+            
+            if project_type == "Data Science":
+                data_dev_match = re.search(r'data-dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
+                if data_dev_match:
+                    data_dev_deps = data_dev_match.group(1)
+                    new_optional_deps += "data-dev = [" + data_dev_deps + "]\n\n"
+            
+            if project_type == "CLI Tool":
+                cli_dev_match = re.search(r'cli-dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
+                if cli_dev_match:
+                    cli_dev_deps = cli_dev_match.group(1)
+                    new_optional_deps += "cli-dev = [" + cli_dev_deps + "]\n\n"
+            
+            # 构建full-dev依赖
+            active_dev_groups = ["dev"]
+            if project_type == "Web Service":
+                active_dev_groups.append("web-dev")
+            elif project_type == "Data Science":
+                active_dev_groups.append("data-dev")
+            elif project_type == "CLI Tool":
+                active_dev_groups.append("cli-dev")
+                
+            new_optional_deps += f"""full-dev = [
+    {', '.join([f'"{group}"' for group in active_dev_groups])}
+]
+"""
+            
+            # 替换可选依赖部分
+            content = content.replace(optional_deps_section.group(0), new_optional_deps)
+    
+    except Exception as e:
+        warning(f"处理依赖时出错: {str(e)}")
+        warning("尝试使用备份文件恢复原始配置")
+        try:
+            if os.path.exists(backup_path):
+                shutil.copy2(backup_path, pyproject_path)
+                info("已恢复原始配置")
+            return
+        except Exception as restore_error:
+            error(f"恢复备份失败: {str(restore_error)}")
+            return
+    
+    # 仅当内容有变化时写入文件
+    if content != original_content:
+        with open(pyproject_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        
+        changes = []
+        if project_type in ["Web Service", "Data Science"]:
+            changes.append(f"项目类型({project_type})")
+        if cli_interface != "Typer":
+            changes.append(f"命令行接口({cli_interface})")
+            
+        if changes:
+            info(f"已根据{' 和 '.join(changes)}配置依赖")
+        else:
+            info("已配置项目依赖")
+    else:
+        info("依赖配置未发生变化")
+
 def normalize_gitattributes():
     """确保.gitattributes文件使用规范的行尾。"""
     gitattributes = pathlib.Path('.gitattributes')
@@ -387,6 +542,14 @@ if __name__ == '__main__':
 
     # 根据项目类型设置项目
     setup_project_by_type()
+
+    # 优化项目依赖
+    try:
+        configure_dependencies()
+        success("已根据项目类型和命令行接口选择优化项目依赖")
+    except Exception as e:
+        warning(f"配置依赖时出错: {str(e)}")
+        warning("请手动检查并调整pyproject.toml文件中的依赖")
 
     # 规范化.gitattributes行尾
     normalize_gitattributes()

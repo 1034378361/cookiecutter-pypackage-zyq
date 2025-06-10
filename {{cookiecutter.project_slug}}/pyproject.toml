@@ -204,7 +204,7 @@ line-ending = "auto"
 convention = "google"  # 使用Google风格文档
 
 # 命名规范配置
-[tool.ruff.lint.flake8-naming]
+[tool.ruff.lint.pep8-naming]
 ignore-names = ["setUp", "tearDown", "setUpClass", "tearDownClass"]
 
 # 导入排序配置
@@ -262,4 +262,3 @@ distribution = true
 [build-system]
 requires = ["pdm-backend>=2.0.0"]
 build-backend = "pdm.backend"
-

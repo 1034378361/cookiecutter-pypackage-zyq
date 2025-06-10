@@ -4,15 +4,19 @@
       "dockerfile": "Dockerfile",
       "context": "..",
       "args": {
-        "PYTHON_VERSION": "3.11"
+        "PYTHON_VERSION": "{{cookiecutter.python_version}}"
       }
     },
     "workspaceFolder": "/home/vscode",
     "remoteUser": "vscode",
     "shutdownAction": "stopContainer",
 
-    // 👇 命令可以使用相对路径和 PATH 中的命令名
-    "postCreateCommand": "./scripts/init.sh",
+    // 添加容错机制的初始化脚本
+    "postCreateCommand": "[ -f ./scripts/init.sh ] && chmod +x ./scripts/init.sh && ./scripts/init.sh || echo '警告: init.sh不存在'",
+
+    // 添加依赖安装命令
+    "postStartCommand": "pdm install -d",
+    
     "mounts": [
       {
         "source": "${localWorkspaceFolder}",
@@ -34,7 +38,9 @@
     },
     "forwardPorts": [8000, 8080],
     "containerEnv": {
-      "PYTHONUNBUFFERED": "1"
+      "PYTHONUNBUFFERED": "1",
+      "PYTHONPATH": "/home/vscode/src",
+      "PROJECT_ENV": "development"
     },
     "customizations": {
       "vscode": {
@@ -46,7 +52,9 @@
           "ms-python.isort",
           "charliermarsh.ruff",
           "njpwerner.autodocstring",
-          "matangover.mypy"
+          "matangover.mypy",
+          "ms-azuretools.vscode-docker",
+          "ms-toolsai.jupyter-renderers"
         ]
       }
     }
