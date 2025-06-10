@@ -1,12 +1,12 @@
 # Python包项目模板
 
-[![更新状态](https://pyup.io/repos/github/audreyfeldroy/cookiecutter-pypackage/shield.svg)](https://pyup.io/repos/github/audreyfeldroy/cookiecutter-pypackage/)
+[![更新状态](https://pyup.io/repos/github/1034378361/cookiecutter-pypackage/shield.svg)](https://pyup.io/repos/github/1034378361/cookiecutter-pypackage/)
 [![文档状态](https://readthedocs.org/projects/cookiecutter-pypackage/badge/?version=latest)](https://cookiecutter-pypackage.readthedocs.io/en/latest/?badge=latest)
-[![GitHub Actions](https://github.com/audreyfeldroy/cookiecutter-pypackage/actions/workflows/test.yml/badge.svg)](https://github.com/audreyfeldroy/cookiecutter-pypackage/actions/workflows/test.yml)
+[![GitHub Actions](https://github.com/1034378361/cookiecutter-pypackage/actions/workflows/test.yml/badge.svg)](https://github.com/1034378361/cookiecutter-pypackage/actions/workflows/test.yml)
 
 基于[Cookiecutter](https://github.com/cookiecutter/cookiecutter)的Python包项目模板。
 
-* GitHub仓库: <https://github.com/yourusername/cookiecutter-pypackage-zyq/>
+* GitHub仓库: <https://github.com/1034378361/cookiecutter-pypackage-zyq/>
 * 文档: <https://cookiecutter-pypackage-zyq.readthedocs.io/>
 * 开源协议: BSD协议
 
