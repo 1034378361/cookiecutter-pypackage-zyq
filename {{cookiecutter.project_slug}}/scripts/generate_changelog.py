@@ -3,7 +3,7 @@
 自动从git提交历史生成CHANGELOG。
 
 使用方法:
-    python scripts/generate_changelog.py [--output CHANGELOG.md] [--since <commit/tag>] [--until <commit/tag>] [--config <config_file>]
+    python scripts/generate_changelog.py [--output CHANGELOG.md] [--since <commit/tag>] [--until <commit/tag>] [--config <config_file>] [--cache-file <cache_file>]
 """
 
 import argparse
@@ -17,7 +17,7 @@ import traceback
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Set
 
 # 日志颜色
 class ColorLog:
@@ -62,6 +62,68 @@ DEFAULT_COMMIT_TYPES = {
     "chore": "其他变更",
     "revert": "回退提交"
 }
+
+class GitCache:
+    """Git提交缓存，用于加速多次运行。"""
+
+    def __init__(self, cache_file: Optional[str] = None):
+        self.cache_file = cache_file
+        self.commit_cache: Dict[str, Dict[str, Any]] = {}
+        self.processed_commits: Set[str] = set()
+        self.cache_loaded = False
+
+        if cache_file and os.path.exists(cache_file):
+            self._load_cache()
+
+    def _load_cache(self) -> None:
+        """从缓存文件加载缓存。"""
+        try:
+            with open(self.cache_file, 'r', encoding='utf-8') as f:
+                cache_data = json.load(f)
+
+            if 'commits' in cache_data and isinstance(cache_data['commits'], dict):
+                self.commit_cache = cache_data['commits']
+                self.cache_loaded = True
+                ColorLog.info(f"已从 {self.cache_file} 加载 {len(self.commit_cache)} 条提交缓存")
+            else:
+                ColorLog.warning(f"缓存文件格式无效: {self.cache_file}")
+        except Exception as e:
+            ColorLog.warning(f"加载缓存失败: {e}")
+
+    def get_commit(self, commit_hash: str) -> Optional[Dict[str, Any]]:
+        """从缓存获取提交信息。"""
+        return self.commit_cache.get(commit_hash)
+
+    def add_commit(self, commit_hash: str, commit_data: Dict[str, Any]) -> None:
+        """添加提交到缓存。"""
+        self.commit_cache[commit_hash] = commit_data
+        self.processed_commits.add(commit_hash)
+
+    def is_processed(self, commit_hash: str) -> bool:
+        """检查提交是否已处理。"""
+        return commit_hash in self.processed_commits
+
+    def mark_processed(self, commit_hash: str) -> None:
+        """标记提交为已处理。"""
+        self.processed_commits.add(commit_hash)
+
+    def save_cache(self) -> None:
+        """保存缓存到文件。"""
+        if not self.cache_file:
+            return
+
+        try:
+            cache_data = {
+                "last_updated": datetime.now().isoformat(),
+                "commits": self.commit_cache
+            }
+
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_data, f, ensure_ascii=False, indent=2)
+
+            ColorLog.success(f"已保存 {len(self.commit_cache)} 条提交缓存到 {self.cache_file}")
+        except Exception as e:
+            ColorLog.warning(f"保存缓存失败: {e}")
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """从配置文件加载配置。
@@ -162,17 +224,19 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         ColorLog.info("使用内置默认配置")
         return config
 
-def get_git_log(since: Optional[str] = None, until: Optional[str] = None) -> List[str]:
+def get_git_log(since: Optional[str] = None, until: Optional[str] = None, cache: Optional[GitCache] = None) -> List[Dict[str, Any]]:
     """获取git日志。
 
     Args:
         since: 起始提交或标签
         until: 结束提交或标签
+        cache: 可选的Git缓存对象
 
     Returns:
-        List[str]: git日志条目
+        List[Dict[str, Any]]: git提交信息列表
     """
-    cmd = ["git", "log", "--pretty=format:%h %ad %s [%an]", "--date=short"]
+    # 首先获取提交哈希列表
+    cmd = ["git", "log", "--pretty=format:%H", "--date=short"]
 
     if since:
         cmd.append(f"{since}...")
@@ -181,13 +245,92 @@ def get_git_log(since: Optional[str] = None, until: Optional[str] = None) -> Lis
         cmd.append(f"...{until}")
 
     try:
-        git_log = subprocess.check_output(cmd, universal_newlines=True, stderr=subprocess.PIPE)
-        return git_log.splitlines() if git_log else []
+        git_hashes = subprocess.check_output(cmd, universal_newlines=True, stderr=subprocess.PIPE)
+        commit_hashes = git_hashes.splitlines() if git_hashes else []
+
+        if not commit_hashes:
+            return []
+
+        ColorLog.info(f"找到 {len(commit_hashes)} 个提交")
+
+        commits = []
+        new_commits = 0
+
+        # 如果有缓存，从缓存中获取已有提交信息
+        for commit_hash in commit_hashes:
+            if cache and not cache.is_processed(commit_hash):
+                cached_commit = cache.get_commit(commit_hash)
+                if cached_commit:
+                    commits.append(cached_commit)
+                    cache.mark_processed(commit_hash)
+                    continue
+
+                # 获取单个提交的详细信息
+                commit_info = get_commit_details(commit_hash)
+                if commit_info:
+                    commits.append(commit_info)
+                    cache.add_commit(commit_hash, commit_info)
+                    new_commits += 1
+            else:
+                # 没有缓存或提交未处理，获取详细信息
+                commit_info = get_commit_details(commit_hash)
+                if commit_info:
+                    commits.append(commit_info)
+                    if cache:
+                        cache.add_commit(commit_hash, commit_info)
+                    new_commits += 1
+
+        if cache:
+            ColorLog.info(f"处理了 {new_commits} 个新提交，{len(commits) - new_commits} 个从缓存加载")
+
+        return commits
+
     except subprocess.CalledProcessError as e:
         ColorLog.error(f"获取git日志失败: {e}")
         ColorLog.error(f"命令: {' '.join(cmd)}")
         ColorLog.error(f"错误输出: {e.stderr if e.stderr else '无'}")
         return []
+
+def get_commit_details(commit_hash: str) -> Optional[Dict[str, Any]]:
+    """获取单个提交的详细信息。
+
+    Args:
+        commit_hash: 提交哈希值
+
+    Returns:
+        Optional[Dict[str, Any]]: 提交信息字典或None
+    """
+    try:
+        # 获取提交详情
+        cmd = ["git", "show", "-s", "--format=%h %ad %s %an", "--date=short", commit_hash]
+        commit_data = subprocess.check_output(cmd, universal_newlines=True).strip()
+
+        # 解析提交数据
+        match = re.match(r"([a-f0-9]+) (\d{4}-\d{2}-\d{2}) (.*) (.*)", commit_data)
+        if not match:
+            return None
+
+        short_hash, date, message, author = match.groups()
+
+        # 解析类型和作用域
+        type_match = re.match(r"([\w:]+)(?:\(([^)]+)\))?: (.*)", message)
+        if type_match:
+            commit_type, scope, msg = type_match.groups()
+        else:
+            commit_type, scope, msg = "", "", message
+
+        return {
+            "hash": commit_hash,
+            "short_hash": short_hash,
+            "date": date,
+            "message": message,
+            "author": author,
+            "type": commit_type.lower() if commit_type else "",
+            "scope": scope or "",
+            "title": msg
+        }
+    except subprocess.CalledProcessError:
+        return None
 
 def get_latest_tag() -> Optional[str]:
     """获取最新的git标签。
@@ -246,7 +389,7 @@ def parse_commit(commit_line: str) -> Tuple[str, str, str, str, str]:
 
     return commit_hash, date, commit_type.lower(), scope or "", msg
 
-def categorize_commits(commits: List[str], config: Dict[str, Any]) -> Dict[str, List[Tuple[str, str, str, str]]]:
+def categorize_commits(commits: List[Dict[str, Any]], config: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
     """将提交信息按类型分类。
 
     Args:
@@ -261,14 +404,14 @@ def categorize_commits(commits: List[str], config: Dict[str, Any]) -> Dict[str, 
     default_type = config.get('default_type', 'chore')
 
     for commit in commits:
-        commit_hash, date, commit_type, scope, message = parse_commit(commit)
+        commit_type = commit.get("type", "")
         if not commit_type:
             commit_type = default_type
 
         if commit_type in commit_types:
-            categorized[commit_type].append((commit_hash, date, scope, message))
+            categorized[commit_type].append(commit)
         else:
-            categorized[default_type].append((commit_hash, date, scope, message))
+            categorized[default_type].append(commit)
 
     return categorized
 
@@ -312,7 +455,11 @@ def generate_markdown(categorized_commits: Dict, version: str, date: str, config
         type_name = commit_types.get(commit_type, "其他变更")
         markdown += f"### {type_name}\n\n"
 
-        for commit_hash, _, scope, message in commits:
+        for commit in commits:
+            scope = commit.get("scope", "")
+            message = commit.get("title", commit.get("message", ""))
+            commit_hash = commit.get("short_hash", "")
+
             scope_text = f"**{scope}:** " if scope else ""
             markdown += f"* {scope_text}{message} ({commit_hash})\n"
 
@@ -355,6 +502,7 @@ def main():
     parser.add_argument("--since", help="起始提交或标签")
     parser.add_argument("--until", help="结束提交或标签")
     parser.add_argument("--config", help="配置文件路径")
+    parser.add_argument("--cache-file", help="缓存文件路径")
     parser.add_argument("--verbose", "-v", action="store_true", help="显示详细信息")
     args = parser.parse_args()
 
@@ -368,6 +516,13 @@ def main():
 
         # 加载配置
         config = load_config(args.config)
+
+        # 初始化缓存
+        cache = None
+        if args.cache_file:
+            cache = GitCache(args.cache_file)
+            if args.verbose:
+                ColorLog.info(f"使用缓存文件: {args.cache_file}")
 
         # 获取版本和日期
         today = datetime.now().strftime("%Y-%m-%d")
@@ -389,7 +544,7 @@ def main():
         if args.verbose:
             ColorLog.info(f"获取提交记录 - 从: {args.since or '仓库起始'} 到: {args.until or 'HEAD'}")
 
-        commits = get_git_log(args.since, args.until)
+        commits = get_git_log(args.since, args.until, cache)
         if not commits:
             ColorLog.warning("未发现新的提交")
             return 0
@@ -401,9 +556,9 @@ def main():
         categorized = categorize_commits(commits, config)
 
         if args.verbose:
-            for commit_type, commits in categorized.items():
+            for commit_type, type_commits in categorized.items():
                 type_name = config['commit_types'].get(commit_type, "其他")
-                ColorLog.info(f"类型 {commit_type} ({type_name}): {len(commits)} 个提交")
+                ColorLog.info(f"类型 {commit_type} ({type_name}): {len(type_commits)} 个提交")
 
         # 生成Markdown
         new_content = generate_markdown(categorized, version, today, config)
@@ -430,6 +585,11 @@ def main():
         try:
             output_path.write_text(updated_content, encoding="utf-8")
             ColorLog.success(f"已更新 {args.output}")
+
+            # 保存缓存
+            if cache:
+                cache.save_cache()
+
             return 0
         except Exception as e:
             ColorLog.error(f"写入CHANGELOG失败: {e}")

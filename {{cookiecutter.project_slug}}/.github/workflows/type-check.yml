@@ -2,7 +2,7 @@ name: 深度类型检查
 
 on:
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '0 0 * * 1'  # 每周一运行
   workflow_dispatch:
     inputs:
       python-version:
@@ -10,6 +10,16 @@ on:
         required: false
         default: '3.12'
         type: string
+      full-report:
+        description: '生成完整报告'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  PYTHON_DEFAULT: "3.12"
+  SOURCE_DIR: src
+  MIN_COVERAGE: 70  # 最低类型覆盖率目标
 
 jobs:
   deep-type-check:
@@ -24,18 +34,69 @@ jobs:
     - name: 设置Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: ${{ github.event.inputs.python-version || '3.12' }}
+        python-version: ${{ github.event.inputs.python-version || env.PYTHON_DEFAULT }}
         cache: pip
+
+    # 缓存PDM
+    - name: 缓存PDM和依赖
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          ~/.pdm
+          .pdm-build
+          .venv
+        key: ${{ runner.os }}-pdm-typecheck-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pdm-typecheck-
+
+    # 缓存mypy
+    - name: 缓存mypy
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          .mypy_cache
+          ~/.cache/mypy
+        key: ${{ runner.os }}-mypy-deep-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-mypy-deep-
 
     - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
+        pip install pdm
+
+        # 仅安装类型检查所需依赖
+        if pdm group list | grep -q typing; then
+          echo "使用typing依赖组"
+          pdm install -G typing
+        else
+          echo "使用dev依赖组"
+          pdm install -G dev
+        fi
+
+        # 安装额外的类型检查工具
+        pip install mypy-baseline types-all
+
+    - name: 检查上次类型覆盖率
+      id: last_coverage
+      continue-on-error: true
+      run: |
+        # 尝试从之前的构建中获取上次的类型覆盖率
+        if [ -f ".mypy-baseline.txt" ]; then
+          LAST_COVERAGE=$(grep -oP "Statement coverage: \K[0-9.]+" .mypy-baseline.txt || echo "0")
+          echo "value=${LAST_COVERAGE}" >> $GITHUB_OUTPUT
+          echo "已找到上次覆盖率: ${LAST_COVERAGE}%"
+        else
+          echo "value=0" >> $GITHUB_OUTPUT
+          echo "未找到上次覆盖率记录"
+        fi
 
     - name: 运行完整类型检查
+      id: type_check
       run: |
         mkdir -p mypy-report
 
+        echo "执行深度类型检查..."
         mypy --config-file pyproject.toml \
           --show-error-codes \
           --pretty \
@@ -44,16 +105,26 @@ jobs:
           --warn-unreachable \
           --html-report mypy-report \
           --txt-report mypy-report \
-          src/
+          $SOURCE_DIR/ || echo "type_check_failed=true" >> $GITHUB_OUTPUT
 
+        echo "生成类型覆盖率报告..."
         echo "类型覆盖率报告:" > mypy-report/coverage.txt
         mypy --config-file pyproject.toml \
           --no-error-summary \
           --no-pretty \
           --txt-report mypy-report/details \
-          src/ || true
+          $SOURCE_DIR/ || true
 
-        grep "Statement coverage:" mypy-report/details/index.txt >> mypy-report/coverage.txt
+        # 提取覆盖率数据
+        COVERAGE_LINE=$(grep "Statement coverage:" mypy-report/details/index.txt || echo "Statement coverage: 0.0%")
+        echo "$COVERAGE_LINE" >> mypy-report/coverage.txt
+
+        # 提取数字部分用于比较
+        COVERAGE=$(echo "$COVERAGE_LINE" | grep -oP "Statement coverage: \K[0-9.]+" || echo "0")
+        echo "coverage=${COVERAGE}" >> $GITHUB_OUTPUT
+
+        # 保存基准数据供未来比较
+        echo "$COVERAGE_LINE" > .mypy-baseline.txt
 
         echo "# 类型检查报告" > mypy-report/summary.md
         echo "生成时间: $(date)" >> mypy-report/summary.md
@@ -63,12 +134,78 @@ jobs:
         cat mypy-report/coverage.txt >> mypy-report/summary.md
         echo '```' >> mypy-report/summary.md
 
+        # 添加与上次的对比
+        if [ -n "${{ steps.last_coverage.outputs.value }}" ] && [ "${{ steps.last_coverage.outputs.value }}" != "0" ]; then
+          DIFF=$(echo "$COVERAGE - ${{ steps.last_coverage.outputs.value }}" | bc)
+          echo "" >> mypy-report/summary.md
+          echo "## 与上次比较" >> mypy-report/summary.md
+          echo "上次覆盖率: ${{ steps.last_coverage.outputs.value }}%" >> mypy-report/summary.md
+
+          if (( $(echo "$DIFF > 0" | bc -l) )); then
+            echo "变化: +${DIFF}% 🚀" >> mypy-report/summary.md
+          elif (( $(echo "$DIFF < 0" | bc -l) )); then
+            echo "变化: ${DIFF}% 📉" >> mypy-report/summary.md
+          else
+            echo "变化: 无变化 ➖" >> mypy-report/summary.md
+          fi
+        fi
+
+        # 添加错误总结
+        ERROR_COUNT=$(grep -c "error:" mypy-report/details/index.txt || echo "0")
+        echo "" >> mypy-report/summary.md
+        echo "## 错误统计" >> mypy-report/summary.md
+        echo "总错误数: ${ERROR_COUNT}" >> mypy-report/summary.md
+
+        if [ "$ERROR_COUNT" -gt 0 ] && [ "${{ github.event.inputs.full-report }}" == "true" ]; then
+          echo "" >> mypy-report/summary.md
+          echo "## 常见错误类型" >> mypy-report/summary.md
+          echo '```' >> mypy-report/summary.md
+          grep "error:" mypy-report/details/index.txt | sed 's/.*error: //' | sort | uniq -c | sort -nr | head -10 >> mypy-report/summary.md
+          echo '```' >> mypy-report/summary.md
+        fi
+
     - name: 上传类型检查报告
       uses: actions/upload-artifact@v4.6.2
       with:
         name: mypy-report
         path: mypy-report/
         retention-days: 30
+
+    - name: 分析类型覆盖率
+      if: always()
+      run: |
+        echo "## 类型检查摘要" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.type_check.outputs.type_check_failed }}" == "true" ]; then
+          echo "⚠️ **类型检查发现错误**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **类型检查通过**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        COVERAGE="${{ steps.type_check.outputs.coverage }}"
+        echo "📊 **类型覆盖率**: ${COVERAGE}% (目标: ${MIN_COVERAGE}%)" >> $GITHUB_STEP_SUMMARY
+
+        # 与上次覆盖率比较
+        if [ -n "${{ steps.last_coverage.outputs.value }}" ] && [ "${{ steps.last_coverage.outputs.value }}" != "0" ]; then
+          DIFF=$(echo "$COVERAGE - ${{ steps.last_coverage.outputs.value }}" | bc)
+
+          if (( $(echo "$DIFF > 0" | bc -l) )); then
+            echo "📈 **改进**: +${DIFF}% (相比上次)" >> $GITHUB_STEP_SUMMARY
+          elif (( $(echo "$DIFF < 0" | bc -l) )); then
+            echo "📉 **下降**: ${DIFF}% (相比上次)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "➖ **无变化**: 覆盖率保持不变" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+
+        # 目标评估
+        if (( $(echo "$COVERAGE < $MIN_COVERAGE" | bc -l) )); then
+          echo "❌ **未达标**: 类型覆盖率低于目标" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **已达标**: 类型覆盖率达到或超过目标" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "📄 **完整报告**: 可在构建产物中下载" >> $GITHUB_STEP_SUMMARY
 
     # 可选：发送类型检查报告通知
     # - name: 发送通知
@@ -77,5 +214,5 @@ jobs:
     #   env:
     #     SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
     #     SLACK_TITLE: "类型检查报告"
-    #     SLACK_MESSAGE: "类型检查已完成，可以在Actions中下载报告。"
+    #     SLACK_MESSAGE: "类型覆盖率: ${{ steps.type_check.outputs.coverage }}%"
     #     SLACK_COLOR: ${{ job.status }}

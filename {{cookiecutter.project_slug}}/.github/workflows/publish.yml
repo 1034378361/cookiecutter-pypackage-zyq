@@ -15,14 +15,24 @@ on:
         required: false
         default: true
         type: boolean
+      skip_tests:
+        description: '是否跳过测试'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_DEFAULT: '3.12'
+  PYTHON_MIN: '3.10'
 
 jobs:
-  changelog:
-    name: 生成变更日志
+  # 验证版本号
+  validate:
+    name: 验证版本和测试
     runs-on: ubuntu-latest
     outputs:
-      release_notes: ${{ steps.get_changelog.outputs.release_notes }}
-      version: ${{ steps.get_version.outputs.version }}
+      version: ${{ steps.check_version.outputs.version }}
+      is_valid: ${{ steps.check_version.outputs.is_valid }}
 
     steps:
     - uses: actions/checkout@v4.2.2
@@ -33,39 +43,112 @@ jobs:
     - name: 设置Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: '3.x'
+        python-version: ${{ env.PYTHON_DEFAULT }}
         cache: pip
+
+    - name: 检查版本号
+      id: check_version
+      run: |
+        if [[ "${{ github.event_name }}" == "push" ]]; then
+          VERSION=${GITHUB_REF#refs/tags/v}
+          IS_VALID=true
+          echo "从标签获取版本: $VERSION"
+        else
+          VERSION=${{ github.event.inputs.version }}
+          # 验证版本号格式
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            IS_VALID=true
+            echo "版本号格式有效: $VERSION"
+          else
+            IS_VALID=false
+            echo "::error::版本号格式无效: $VERSION (应为 X.Y.Z 格式)"
+          fi
+        fi
+
+        # 检查版本号是否已存在
+        if [ "$IS_VALID" = "true" ] && git tag -l | grep -q "v$VERSION"; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "::warning::版本 v$VERSION 已存在。如果继续，这将覆盖现有版本。"
+          fi
+        fi
+
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "is_valid=$IS_VALID" >> $GITHUB_OUTPUT
+
+    - name: 验证测试通过
+      if: ${{ github.event.inputs.skip_tests != 'true' }}
+      run: |
+        # 检查最近的测试工作流是否成功
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          echo "手动触发发布，检查最近的测试状态..."
+          REPO="${GITHUB_REPOSITORY}"
+          TEST_STATUS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${REPO}/actions/workflows/test.yml/runs?status=completed&per_page=1" | \
+            jq -r '.workflow_runs[0].conclusion')
+
+          if [ "$TEST_STATUS" != "success" ]; then
+            echo "::warning::最近的测试工作流状态为: $TEST_STATUS。建议在发布前确保所有测试通过。"
+          else
+            echo "最近的测试工作流状态: 成功"
+          fi
+        fi
+
+  # 生成变更日志
+  changelog:
+    name: 生成变更日志
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.is_valid == 'true'
+    outputs:
+      release_notes: ${{ steps.get_changelog.outputs.release_notes }}
+      version: ${{ needs.validate.outputs.version }}
+
+    steps:
+    - uses: actions/checkout@v4.2.2
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: 设置Python
+      uses: actions/setup-python@v5.6.0
+      with:
+        python-version: ${{ env.PYTHON_DEFAULT }}
+        cache: pip
+
+    # 缓存changelog生成脚本
+    - name: 缓存Changelog
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          .changelog-cache
+        key: changelog-${{ hashFiles('scripts/generate_changelog.py') }}-${{ github.sha }}
+        restore-keys: |
+          changelog-${{ hashFiles('scripts/generate_changelog.py') }}-
 
     - name: 安装依赖
       run: |
         python -m pip install --upgrade pip
-        pip install gitpython
+        pip install gitpython pyyaml
 
-    - name: 获取版本号
-      id: get_version
+    - name: 创建标签（如果需要）
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.tag == 'true'
       run: |
-        if [[ "${{ github.event_name }}" == "push" ]]; then
-          VERSION=${GITHUB_REF#refs/tags/v}
-        else
-          VERSION=${{ github.event.inputs.version }}
-          if [[ "${{ github.event.inputs.tag }}" == "true" ]]; then
-            git config --local user.name "GitHub Action"
-            git config --local user.email "action@github.com"
-            git tag -a "v${VERSION}" -m "Release v${VERSION}"
-            git push origin "v${VERSION}"
-          fi
-        fi
-        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        VERSION=${{ needs.validate.outputs.version }}
+        git config --local user.name "GitHub Action"
+        git config --local user.email "action@github.com"
+        git tag -a "v${VERSION}" -m "Release v${VERSION}"
+        git push origin "v${VERSION}"
 
     - name: 生成CHANGELOG
       run: |
-        CURRENT_TAG="v${{ steps.get_version.outputs.version }}"
+        mkdir -p .changelog-cache
+        CURRENT_TAG="v${{ needs.validate.outputs.version }}"
         PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
 
         if [ ! -z "$PREV_TAG" ]; then
-          python scripts/generate_changelog.py --since $PREV_TAG --until $CURRENT_TAG --output RELEASE_NOTES.md
+          python scripts/generate_changelog.py --since $PREV_TAG --until $CURRENT_TAG --output RELEASE_NOTES.md --cache-file .changelog-cache/cache.json
         else
-          python scripts/generate_changelog.py --until $CURRENT_TAG --output RELEASE_NOTES.md
+          python scripts/generate_changelog.py --until $CURRENT_TAG --output RELEASE_NOTES.md --cache-file .changelog-cache/cache.json
         fi
 
     - name: 获取发布说明
@@ -74,7 +157,7 @@ jobs:
         if [ -f RELEASE_NOTES.md ]; then
           sed '1,2d' RELEASE_NOTES.md > RELEASE_NOTES_CLEAN.md
         else
-          echo "Release v${{ steps.get_version.outputs.version }}" > RELEASE_NOTES_CLEAN.md
+          echo "Release v${{ needs.validate.outputs.version }}" > RELEASE_NOTES_CLEAN.md
         fi
 
         NOTES=$(cat RELEASE_NOTES_CLEAN.md)
@@ -82,10 +165,15 @@ jobs:
         echo "$NOTES" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
 
+  # 构建和发布
   deploy:
     name: 构建和发布
-    needs: changelog
+    needs: [validate, changelog]
+    if: needs.validate.outputs.is_valid == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      pypi_url: ${{ steps.get_urls.outputs.pypi_url }}
+      github_release_url: ${{ steps.get_urls.outputs.github_release_url }}
 
     steps:
     - uses: actions/checkout@v4.2.2
@@ -95,26 +183,60 @@ jobs:
     - name: 设置Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: "3.9"
+        python-version: ${{ env.PYTHON_MIN }} # 使用支持的最低Python版本构建
+        cache: pip
 
-    - name: 安装 PDM
+    - name: 安装构建依赖
       run: |
         python -m pip install --upgrade pip
-        pip install pdm
+        pip install pdm twine build wheel
 
     - name: 构建包
+      id: build
       env:
         VERSION: ${{ needs.changelog.outputs.version }}
       run: |
         pdm build
+        echo "wheel_file=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
+        echo "sdist_file=$(ls dist/*.tar.gz)" >> $GITHUB_OUTPUT
+        echo "files_count=$(ls dist/ | wc -l)" >> $GITHUB_OUTPUT
+
+    - name: 验证构建产物
+      run: |
+        # 检查构建文件数量
+        if [ "${{ steps.build.outputs.files_count }}" -lt 2 ]; then
+          echo "::error::构建可能不完整，预期至少有wheel和sdist两个文件"
+          exit 1
+        fi
+
+        # 验证wheel包
+        if [ ! -f "${{ steps.build.outputs.wheel_file }}" ]; then
+          echo "::error::找不到wheel包文件"
+          exit 1
+        fi
+
+        # 验证源码包
+        if [ ! -f "${{ steps.build.outputs.sdist_file }}" ]; then
+          echo "::error::找不到源码包文件"
+          exit 1
+        fi
+
+        # 使用twine检查包
+        python -m twine check dist/*
+
+        echo "构建验证通过 ✅"
 
     - name: 发布到PyPI
+      id: pypi_publish
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
+        skip-existing: false
+        verbose: true
 
     - name: 创建GitHub Release
+      id: github_release
       uses: softprops/action-gh-release@v2.2.2
       with:
         tag_name: v${{ needs.changelog.outputs.version }}
@@ -123,3 +245,22 @@ jobs:
         files: dist/*
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: 获取发布URL
+      id: get_urls
+      run: |
+        PACKAGE_NAME=$(python -c "import json; print(json.load(open('pyproject.toml'))['project']['name'])")
+        PYPI_URL="https://pypi.org/project/${PACKAGE_NAME}/${VERSION}/"
+        GITHUB_RELEASE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/v${{ needs.changelog.outputs.version }}"
+
+        echo "pypi_url=${PYPI_URL}" >> $GITHUB_OUTPUT
+        echo "github_release_url=${GITHUB_RELEASE_URL}" >> $GITHUB_OUTPUT
+
+    - name: 发布摘要
+      run: |
+        echo "## 🚀 发布成功 v${{ needs.changelog.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "📦 **PyPI**: [${PACKAGE_NAME} v${{ needs.changelog.outputs.version }}](https://pypi.org/project/${PACKAGE_NAME}/${{ needs.changelog.outputs.version }}/)" >> $GITHUB_STEP_SUMMARY
+        echo "📝 **GitHub Release**: [v${{ needs.changelog.outputs.version }}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/v${{ needs.changelog.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+        echo "📄 **文件**:" >> $GITHUB_STEP_SUMMARY
+        echo "  - Wheel: $(basename ${{ steps.build.outputs.wheel_file }})" >> $GITHUB_STEP_SUMMARY
+        echo "  - Source: $(basename ${{ steps.build.outputs.sdist_file }})" >> $GITHUB_STEP_SUMMARY

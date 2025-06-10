@@ -5,8 +5,22 @@ on:
     branches: [main, master]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+    inputs:
+      python-version:
+        description: '指定Python版本测试'
+        required: false
+        type: string
+
+env:
+  SOURCE_DIR: src
+  TEST_DIR: tests
+  PYTHON_DEFAULT: "3.12"
+  MIN_PYTHON: "3.8"
+  COVERAGE_THRESHOLD: 85
 
 jobs:
+  # 测试矩阵 - 在不同Python版本上运行测试
   test:
     name: 测试 Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
@@ -14,10 +28,10 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
-
-    env:
-      SOURCE_DIR: src
-      TEST_DIR: tests
+        # 如果通过手动触发并指定了Python版本，则仅测试该版本
+        include:
+          - python-version: ${{ github.event.inputs.python-version }}
+            if: ${{ github.event.inputs.python-version != '' }}
 
     steps:
     - uses: actions/checkout@v4.2.2
@@ -30,6 +44,29 @@ jobs:
         python-version: ${{ matrix.python-version }}
         cache: pip
 
+    # 缓存PDM和依赖
+    - name: 缓存PDM
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          ~/.pdm
+          .pdm-build
+          .venv
+        key: ${{ runner.os }}-pdm-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pdm-${{ matrix.python-version }}-
+
+    # 缓存pytest
+    - name: 缓存pytest
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          .pytest_cache
+          ~/.cache/pytest
+        key: ${{ runner.os }}-pytest-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pytest-${{ matrix.python-version }}-
+
     - name: 安装 PDM
       run: |
         python -m pip install --upgrade pip
@@ -37,20 +74,65 @@ jobs:
 
     - name: 使用 PDM 安装依赖
       run: |
-        pdm install --dev
+        # 仅安装测试所需依赖
+        if pdm group list | grep -q test; then
+          echo "使用test依赖组"
+          pdm install -G test
+        else
+          echo "使用dev依赖组"
+          pdm install -G dev
+        fi
 
     - name: 运行测试
+      id: test_run
       run: |
-        pdm run pytest --cov=$SOURCE_DIR --cov-report=term --cov-report=xml --cov-fail-under=85 $TEST_DIR/
+        pdm run pytest \
+          --cov=$SOURCE_DIR \
+          --cov-report=term \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-fail-under=$COVERAGE_THRESHOLD \
+          --junitxml=junit/test-results-${{ matrix.python-version }}.xml \
+          $TEST_DIR/ || echo "tests_failed=true" >> $GITHUB_OUTPUT
 
     - name: 上传测试覆盖率报告
-      uses: codecov/codecov-action@v3.1.4
+      uses: codecov/codecov-action@v4.5.0
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.xml
         fail_ci_if_error: false
 
-  lint:
+    - name: 上传测试报告
+      if: always()
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          junit/test-results-${{ matrix.python-version }}.xml
+          htmlcov/
+        retention-days: 7
+
+    - name: 测试摘要
+      if: always()
+      run: |
+        echo "## Python ${{ matrix.python-version }} 测试结果" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.test_run.outputs.tests_failed }}" == "true" ]; then
+          echo "❌ **测试失败**" >> $GITHUB_STEP_SUMMARY
+          echo "查看详细报告了解失败原因" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **测试通过**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        # 提取覆盖率数据
+        if [ -f coverage.xml ]; then
+          COVERAGE=$(grep -o 'line-rate="[0-9].[0-9]*"' coverage.xml | head -1 | grep -o '[0-9].[0-9]*')
+          COVERAGE_PCT=$(echo "$COVERAGE * 100" | bc)
+          echo "📊 **覆盖率**: ${COVERAGE_PCT}% (阈值: ${COVERAGE_THRESHOLD}%)" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # 代码质量检查
+  quality:
     name: 代码质量检查
     runs-on: ubuntu-latest
 
@@ -62,8 +144,30 @@ jobs:
     - name: 设置 Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: "3.12"
+        python-version: ${{ env.PYTHON_DEFAULT }}
         cache: pip
+
+    # 缓存PDM
+    - name: 缓存PDM和依赖
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          ~/.pdm
+          .pdm-build
+          .venv
+        key: ${{ runner.os }}-pdm-quality-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pdm-quality-
+
+    # 缓存Ruff
+    - name: 缓存Ruff
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          ~/.cache/ruff
+        key: ${{ runner.os }}-ruff-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-ruff-
 
     - name: 安装 PDM
       run: |
@@ -72,13 +176,61 @@ jobs:
 
     - name: 使用 PDM 安装依赖
       run: |
-        pdm install --dev
+        # 仅安装lint所需依赖
+        if pdm group list | grep -q lint; then
+          echo "使用lint依赖组"
+          pdm install -G lint
+        else
+          echo "使用dev依赖组"
+          pdm install -G dev
+        fi
 
-    - name: 运行 Ruff 代码检查和格式检查
+    - name: 运行 Ruff 代码检查
+      id: ruff_check
       run: |
-        pdm run ruff check .
-        pdm run ruff format --check .
+        pdm run ruff check . || echo "ruff_failed=true" >> $GITHUB_OUTPUT
 
+    - name: 运行 Ruff 格式检查
+      id: ruff_format
+      run: |
+        pdm run ruff format --check . || echo "format_failed=true" >> $GITHUB_OUTPUT
+
+    - name: 运行安全检查 (Bandit)
+      id: security_check
+      run: |
+        if pdm list | grep -q bandit; then
+          echo "运行Bandit安全检查"
+          pdm run bandit -r $SOURCE_DIR -x tests -c pyproject.toml || echo "security_failed=true" >> $GITHUB_OUTPUT
+        else
+          echo "项目未配置Bandit，跳过安全检查"
+        fi
+
+    - name: 代码质量摘要
+      if: always()
+      run: |
+        echo "## 代码质量检查结果" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.ruff_check.outputs.ruff_failed }}" == "true" ]; then
+          echo "❌ **Ruff 代码检查失败**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **Ruff 代码检查通过**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ "${{ steps.ruff_format.outputs.format_failed }}" == "true" ]; then
+          echo "❌ **代码格式检查失败**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **代码格式检查通过**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [ "${{ steps.security_check.outputs.security_failed }}" == "true" ]; then
+          echo "⚠️ **安全检查发现问题**" >> $GITHUB_STEP_SUMMARY
+        elif [ "${{ steps.security_check.outputs.security_failed }}" == "" ]; then
+          echo "✅ **安全检查通过**" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "ℹ️ **未运行安全检查**" >> $GITHUB_STEP_SUMMARY
+        fi
+
+  # 类型检查
   type-check:
     name: 类型检查
     runs-on: ubuntu-latest
@@ -91,8 +243,31 @@ jobs:
     - name: 设置 Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: "3.12"
+        python-version: ${{ env.PYTHON_DEFAULT }}
         cache: pip
+
+    # 缓存PDM
+    - name: 缓存PDM和依赖
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          ~/.pdm
+          .pdm-build
+          .venv
+        key: ${{ runner.os }}-pdm-mypy-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pdm-mypy-
+
+    # 缓存mypy
+    - name: 缓存mypy
+      uses: actions/cache@v4.0.2
+      with:
+        path: |
+          .mypy_cache
+          ~/.cache/mypy
+        key: ${{ runner.os }}-mypy-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-mypy-
 
     - name: 安装 PDM
       run: |
@@ -101,9 +276,17 @@ jobs:
 
     - name: 使用 PDM 安装依赖
       run: |
-        pdm install --dev
+        # 仅安装类型检查所需依赖
+        if pdm group list | grep -q typing; then
+          echo "使用typing依赖组"
+          pdm install -G typing
+        else
+          echo "使用dev依赖组"
+          pdm install -G dev
+        fi
 
     - name: 类型检查（Mypy）
+      id: mypy_check
       run: |
         pdm run mypy --config-file pyproject.toml \
           --show-error-codes \
@@ -111,4 +294,25 @@ jobs:
           --warn-redundant-casts \
           --warn-unused-ignores \
           --warn-unreachable \
-          src/
+          --html-report mypy_report \
+          $SOURCE_DIR/ || echo "mypy_failed=true" >> $GITHUB_OUTPUT
+
+    - name: 上传类型检查报告
+      if: always()
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: mypy-report
+        path: mypy_report/
+        retention-days: 7
+
+    - name: 类型检查摘要
+      if: always()
+      run: |
+        echo "## 类型检查结果" >> $GITHUB_STEP_SUMMARY
+
+        if [ "${{ steps.mypy_check.outputs.mypy_failed }}" == "true" ]; then
+          echo "❌ **类型检查失败**" >> $GITHUB_STEP_SUMMARY
+          echo "请查看详细报告了解问题" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "✅ **类型检查通过**" >> $GITHUB_STEP_SUMMARY
+        fi
