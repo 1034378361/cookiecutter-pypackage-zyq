@@ -1,10 +1,11 @@
 # {{ cookiecutter.project_name }}
 
 [![PyPI](https://img.shields.io/pypi/v/{{ cookiecutter.project_slug }}.svg)](https://pypi.python.org/pypi/{{ cookiecutter.project_slug }})
-
-[![Tests](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml/badge.svg)](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml)
-
+[![测试](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml/badge.svg)](https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/actions/workflows/test.yml)
 [![文档](https://img.shields.io/badge/文档-GitHub_Pages-blue)](https://{{ cookiecutter.github_username }}.github.io/{{ cookiecutter.project_slug }}/)
+{% if cookiecutter.include_coverage_badge == "y" -%}
+[![代码覆盖率](https://codecov.io/gh/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}/branch/main/graph/badge.svg)](https://codecov.io/gh/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }})
+{%- endif %}
 
 {{ cookiecutter.project_short_description }}
 
@@ -13,153 +14,163 @@
 
 ## 特性
 
-* 现代化依赖管理:
-  * 使用PDM管理依赖和构建
-  * 精确依赖版本锁定
-  * 分组依赖管理
-  * 简化发布流程
+* 现代化Python包结构:
+  * 使用`src`布局，提高包安全性
+  * 完整的类型注解支持
+  * 模块化设计，易于扩展
 
-* GitHub Actions CI: 自动测试、代码风格检查
-* GitHub 自动发布: 通过标签发布到PyPI
+* 自动化测试与CI:
+  * 基于pytest的测试框架
+  * GitHub Actions持续集成
+  * 自动测试、代码风格检查
+  * 自动发布到PyPI
 
-* 内置工具库:
-  * 文件处理工具 (JSON/YAML/Pickle)
-  * 数据处理工具 (字符串、日期、字典处理)
-  * 日志工具 (控制台/文件/轮转日志)
+{% if cookiecutter.include_mypy == "y" -%}
+* 类型检查:
+  * 严格的mypy类型验证
+  * 类型覆盖率报告
+  * 预配置的类型检查设置
+{%- endif %}
 
-* 智能版本管理:
-  * 自动从Git标签读取版本
-  * 支持开发和分发版本管理
-
-* 命令行工具: 基于Typer的命令行接口
+{% if cookiecutter.include_cli == "y" -%}
+* 命令行接口:
+  * 基于{{ cookiecutter.cli_framework }}的命令行工具
+  * 自动生成帮助文档
+  * 命令补全支持
+  * 友好的错误提示
+{%- endif %}
 
 * 代码质量工具:
-  * Pre-commit钩子自动检查代码风格和质量
-  * 集成Black/isort/ruff/mypy/bandit等工具
-  * 自动类型检查与报告:
-    * CI中独立的类型检查流程
-    * 每周自动生成类型覆盖率报告
-    * 严格的类型验证确保代码健壮性
-  * 测试覆盖率要求:
-    * 配置最低覆盖率阈值(85%)
-    * CI流程中强制检查覆盖率
-    * 生成HTML和XML格式覆盖率报告
+  * 预配置的pre-commit钩子
+  * 代码格式化(Black, isort)
+  * 代码质量检查(Ruff)
+  * 安全性检查(Bandit)
 
-* 自动化变更日志:
-  * 从git提交历史自动生成CHANGELOG
-  * 根据约定式提交格式分类变更
-  * 支持增量更新和完整历史生成
-  * GitHub Actions自动更新:
-    * 推送标签时自动更新
-    * 合并PR时自动更新
-    * 支持手动触发
-  * 与发布流程集成:
-    * 发布到PyPI时自动生成发布说明
-    * GitHub Release说明自动使用CHANGELOG内容
+* 完整的开发工具链:
+  * 可重现的开发环境
+  * 一致的代码风格
+  * 自动化文档生成
+  * 版本管理工具
 
-* 开发容器配置:
-  * 标准化开发环境，确保一致性体验
-  * VS Code开发容器支持
-  * 预配置Python开发工具和扩展
-  * 无需手动配置即可开始开发
-
-* 依赖自动更新:
-  * GitHub Dependabot集成
-  * 自动检测并更新过期依赖
-  * 智能分组相关依赖更新
-  * 维护Python包、GitHub Actions和Docker镜像
-
+{% if cookiecutter.use_docker == "y" -%}
 * Docker支持:
-  * 多阶段构建优化的应用镜像
+  * 优化的Dockerfile
   * Docker Compose配置
-  * 方便的构建和运行脚本
-  * 完整的部署文档
+  * 多阶段构建流程
+  * 生产环境就绪配置
+{%- endif %}
 
 ## 快速开始
 
-### 环境设置
-
-本项目提供了便捷的环境设置脚本，可根据不同操作系统安装必要的开发工具：
-
-#### Linux/macOS 用户
-
-使用提供的安装脚本：
-
-```bash
-# 安装pyenv和PDM
-./install.sh
-```
-
-#### Windows 用户
-
-使用PowerShell脚本：
-
-```powershell
-# 以管理员权限运行安装脚本
-./setup-windows.ps1
-```
-
-或者使用Makefile：
-
-```bash
-# 安装pyenv-win
-make install-pyenv
-
-# 安装PDM
-make pdm-install
-
-# 一键安装所有开发工具
-make setup
-```
-
 ### 安装
 
-手动安装PDM依赖管理工具：
+{% if cookiecutter.use_docker == "y" -%}
+#### 使用Docker
 
 ```bash
-# Linux/macOS
-curl -sSL https://pdm.fming.dev/install-pdm.py | python3 -
+# 构建Docker镜像
+docker-compose build
 
-# Windows (PowerShell)
-(Invoke-WebRequest -Uri https://pdm.fming.dev/install-pdm.py -UseBasicParsing).Content | py -
+# 运行容器
+docker-compose up -d
 ```
 
-安装本项目：
+#### 手动安装
+{%- endif %}
+
+从PyPI安装:
 
 ```bash
+pip install {{ cookiecutter.project_slug }}
+```
+
+从源码安装:
+
+```bash
+# 克隆仓库
+git clone https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.git
+cd {{ cookiecutter.project_slug }}
+
 # 安装项目及其依赖
-pdm install
-
-# 安装开发依赖
-pdm install -dG dev
+pip install -e ".[dev]"
 ```
 
-### 使用
+### 使用示例
 
 ```python
-from {{ cookiecutter.project_slug }} import somefunction
+from {{ cookiecutter.project_slug }} import example_function
 
 # 使用示例
-result = somefunction()
+result = example_function()
+print(result)
 ```
 
-### 开发
+{% if cookiecutter.include_cli == "y" -%}
+### 命令行使用
+
+安装后，可以直接使用命令行工具:
+
+```bash
+# 显示帮助信息
+{{ cookiecutter.project_slug }} --help
+
+# 运行主要功能
+{{ cookiecutter.project_slug }} run
+
+# 查看版本
+{{ cookiecutter.project_slug }} --version
+```
+{%- endif %}
+
+## 开发
+
+### 环境设置
+
+```bash
+# 安装开发依赖
+pip install -e ".[dev]"
+
+# 安装pre-commit钩子
+pre-commit install
+```
+
+### 常用命令
 
 ```bash
 # 运行测试
-pdm run pytest
+pytest
+
+# 生成测试覆盖率报告
+pytest --cov={{ cookiecutter.project_slug }}
 
 # 代码格式化
-pdm run make format
+make format
 
-# 代码检查
-pdm run make lint
+# 代码质量检查
+make lint
+
+{% if cookiecutter.include_mypy == "y" -%}
+# 类型检查
+make type-check
+{%- endif %}
+
+# 构建文档
+make docs
 ```
 
-## 功能列表
+## 发布流程
 
-* TODO
+1. 更新版本号（在src/{{ cookiecutter.project_slug }}/_version.py中）
+2. 提交所有更改
+3. 创建新标签: `git tag v0.1.0`
+4. 推送标签: `git push --tags`
 
-## 贡献者
+GitHub Actions将自动构建并发布到PyPI。
 
-本项目使用 [Cookiecutter](https://github.com/audreyr/cookiecutter) 和 [audreyr/cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage) 项目模板修改后创建。
+## 贡献指南
+
+欢迎贡献！请查看[CONTRIBUTING.rst](CONTRIBUTING.rst)了解如何参与项目开发。
+
+## 更新日志
+
+查看[CHANGELOG.md](CHANGELOG.md)了解版本历史和更新内容。
