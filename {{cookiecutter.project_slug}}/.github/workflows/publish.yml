@@ -43,7 +43,7 @@ jobs:
     - name: 设置Python
       uses: actions/setup-python@v5.6.0
       with:
-        python-version: ${{ env.PYTHON_DEFAULT }}
+        python-version: '3.12'
         cache: pip
 
     - name: 检查版本号
@@ -93,45 +93,22 @@ jobs:
           fi
         fi
 
-  # 生成变更日志
-  changelog:
-    name: 生成变更日志
-    runs-on: ubuntu-latest
+  # 创建标签（如果需要）
+  create-tag:
+    name: 创建版本标签
     needs: validate
-    if: needs.validate.outputs.is_valid == 'true'
-    outputs:
-      release_notes: ${{ steps.get_changelog.outputs.release_notes }}
-      version: ${{ needs.validate.outputs.version }}
+    if: >
+      needs.validate.outputs.is_valid == 'true' &&
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.tag == 'true'
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4.2.2
       with:
         fetch-depth: 0
-        fetch-tags: true
 
-    - name: 设置Python
-      uses: actions/setup-python@v5.6.0
-      with:
-        python-version: ${{ env.PYTHON_DEFAULT }}
-        cache: pip
-
-    # 缓存changelog生成脚本
-    - name: 缓存Changelog
-      uses: actions/cache@v4.0.2
-      with:
-        path: |
-          .changelog-cache
-        key: changelog-${{ hashFiles('scripts/generate_changelog.py') }}-${{ github.sha }}
-        restore-keys: |
-          changelog-${{ hashFiles('scripts/generate_changelog.py') }}-
-
-    - name: 安装依赖
-      run: |
-        python -m pip install --upgrade pip
-        pip install gitpython pyyaml
-
-    - name: 创建标签（如果需要）
-      if: github.event_name == 'workflow_dispatch' && github.event.inputs.tag == 'true'
+    - name: 创建标签
       run: |
         VERSION=${{ needs.validate.outputs.version }}
         git config --local user.name "GitHub Action"
@@ -139,128 +116,24 @@ jobs:
         git tag -a "v${VERSION}" -m "Release v${VERSION}"
         git push origin "v${VERSION}"
 
-    - name: 生成CHANGELOG
-      run: |
-        mkdir -p .changelog-cache
-        CURRENT_TAG="v${{ needs.validate.outputs.version }}"
-        PREV_TAG=$(git tag --sort=-v:refname | grep -v "^${CURRENT_TAG}$" | head -n 1)
-
-        if [ ! -z "$PREV_TAG" ]; then
-          python scripts/generate_changelog.py --since $PREV_TAG --until $CURRENT_TAG --output RELEASE_NOTES.md --cache-file .changelog-cache/cache.json
-        else
-          python scripts/generate_changelog.py --until $CURRENT_TAG --output RELEASE_NOTES.md --cache-file .changelog-cache/cache.json
-        fi
-
-    - name: 获取发布说明
-      id: get_changelog
-      run: |
-        if [ -f RELEASE_NOTES.md ]; then
-          sed '1,2d' RELEASE_NOTES.md > RELEASE_NOTES_CLEAN.md
-        else
-          echo "Release v${{ needs.validate.outputs.version }}" > RELEASE_NOTES_CLEAN.md
-        fi
-
-        NOTES=$(cat RELEASE_NOTES_CLEAN.md)
-        echo "release_notes<<EOF" >> $GITHUB_OUTPUT
-        echo "$NOTES" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
+  # 生成变更日志
+  changelog:
+    name: 生成变更日志
+    needs: [validate, create-tag]
+    if: needs.validate.outputs.is_valid == 'true'
+    uses: ./.github/workflows/reusable-changelog.yml
+    with:
+      version: ${{ needs.validate.outputs.version }}
+      mode: 'incremental'
 
   # 构建和发布
-  deploy:
+  publish:
     name: 构建和发布
     needs: [validate, changelog]
     if: needs.validate.outputs.is_valid == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      pypi_url: ${{ steps.get_urls.outputs.pypi_url }}
-      github_release_url: ${{ steps.get_urls.outputs.github_release_url }}
-
-    steps:
-    - uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
-
-    - name: 设置Python
-      uses: actions/setup-python@v5.6.0
-      with:
-        python-version: ${{ env.PYTHON_MIN }} # 使用支持的最低Python版本构建
-        cache: pip
-
-    - name: 安装构建依赖
-      run: |
-        python -m pip install --upgrade pip
-        pip install pdm twine build wheel
-
-    - name: 构建包
-      id: build
-      env:
-        VERSION: ${{ needs.changelog.outputs.version }}
-      run: |
-        pdm build
-        echo "wheel_file=$(ls dist/*.whl)" >> $GITHUB_OUTPUT
-        echo "sdist_file=$(ls dist/*.tar.gz)" >> $GITHUB_OUTPUT
-        echo "files_count=$(ls dist/ | wc -l)" >> $GITHUB_OUTPUT
-
-    - name: 验证构建产物
-      run: |
-        # 检查构建文件数量
-        if [ "${{ steps.build.outputs.files_count }}" -lt 2 ]; then
-          echo "::error::构建可能不完整，预期至少有wheel和sdist两个文件"
-          exit 1
-        fi
-
-        # 验证wheel包
-        if [ ! -f "${{ steps.build.outputs.wheel_file }}" ]; then
-          echo "::error::找不到wheel包文件"
-          exit 1
-        fi
-
-        # 验证源码包
-        if [ ! -f "${{ steps.build.outputs.sdist_file }}" ]; then
-          echo "::error::找不到源码包文件"
-          exit 1
-        fi
-
-        # 使用twine检查包
-        python -m twine check dist/*
-
-        echo "构建验证通过 ✅"
-
-    - name: 发布到PyPI
-      id: pypi_publish
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        skip-existing: false
-        verbose: true
-
-    - name: 创建GitHub Release
-      id: github_release
-      uses: softprops/action-gh-release@v2.2.2
-      with:
-        tag_name: v${{ needs.changelog.outputs.version }}
-        name: Release v${{ needs.changelog.outputs.version }}
-        body: ${{ needs.changelog.outputs.release_notes }}
-        files: dist/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: 获取发布URL
-      id: get_urls
-      run: |
-        PACKAGE_NAME=$(python -c "import json; print(json.load(open('pyproject.toml'))['project']['name'])")
-        PYPI_URL="https://pypi.org/project/${PACKAGE_NAME}/${VERSION}/"
-        GITHUB_RELEASE_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/v${{ needs.changelog.outputs.version }}"
-
-        echo "pypi_url=${PYPI_URL}" >> $GITHUB_OUTPUT
-        echo "github_release_url=${GITHUB_RELEASE_URL}" >> $GITHUB_OUTPUT
-
-    - name: 发布摘要
-      run: |
-        echo "## 🚀 发布成功 v${{ needs.changelog.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-        echo "📦 **PyPI**: [${PACKAGE_NAME} v${{ needs.changelog.outputs.version }}](https://pypi.org/project/${PACKAGE_NAME}/${{ needs.changelog.outputs.version }}/)" >> $GITHUB_STEP_SUMMARY
-        echo "📝 **GitHub Release**: [v${{ needs.changelog.outputs.version }}](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/releases/tag/v${{ needs.changelog.outputs.version }})" >> $GITHUB_STEP_SUMMARY
-        echo "📄 **文件**:" >> $GITHUB_STEP_SUMMARY
-        echo "  - Wheel: $(basename ${{ steps.build.outputs.wheel_file }})" >> $GITHUB_STEP_SUMMARY
-        echo "  - Source: $(basename ${{ steps.build.outputs.sdist_file }})" >> $GITHUB_STEP_SUMMARY
+    uses: ./.github/workflows/reusable-publish.yml
+    with:
+      version: ${{ needs.validate.outputs.version }}
+      release-notes: ${{ needs.changelog.outputs.release-notes }}
+      python-version: '3.12'
+    secrets: inherit

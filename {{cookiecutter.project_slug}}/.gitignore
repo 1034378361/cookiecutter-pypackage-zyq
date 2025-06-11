@@ -62,8 +62,8 @@ instance/
 # Scrapy stuff:
 .scrapy
 
-# Sphinx documentation
-docs/_build/
+# documentation
+docs/
 
 # PyBuilder
 target/
@@ -108,3 +108,24 @@ ENV/
 .vscode/
 .idea/
 
+# Docker dev environment
+.local/
+.dotnet/
+.bash_history
+.jupyter/
+.npm/
+.config/
+.cache/
+.ipython/
+
+# PDM package manager
+.pdm-python
+__pypackages__/
+pdm.lock
+
+# Backup files
+*.bak
+*~
+.*.swp
+
+.vscode-server/

@@ -10,6 +10,15 @@ on:
       - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
       - 'src/**/*.py'  # 添加源代码文件，因为可能包含文档字符串
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yml'
+      - 'src/**/*.py'
   workflow_dispatch:  # 允许手动触发
     inputs:
       environment:
@@ -21,96 +30,14 @@ on:
           - github-pages
           - production
 
-permissions:
-  contents: write
+# 全局环境变量
+env:
+  PYTHON_DEFAULT: '3.12'
 
 jobs:
-  build-and-deploy:
+  docs:
     name: 构建和部署文档
-    runs-on: ubuntu-latest
-    steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: 设置Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-          cache: pip
-
-      # 缓存MkDocs构建
-      - name: 缓存MkDocs
-        uses: actions/cache@v4
-        with:
-          path: |
-            .cache
-            site/.cache
-          key: ${{ runner.os }}-mkdocs-${{ hashFiles('mkdocs.yml') }}-${{ hashFiles('docs/**') }}
-          restore-keys: |
-            ${{ runner.os }}-mkdocs-
-
-      - name: 安装依赖
-        run: |
-          python -m pip install --upgrade pip
-          pip install pdm
-          # 如果PDM有文档组，只安装文档相关依赖
-          if pdm group list | grep -q docs; then
-            echo "使用docs依赖组"
-            pdm install -G docs
-          else
-            echo "使用dev依赖组"
-            pdm install -G dev
-          fi
-
-      - name: 构建文档
-        id: build
-        run: |
-          pdm run mkdocs build --strict
-          echo "doc_files=$(find site -type f | wc -l)" >> $GITHUB_OUTPUT
-
-      - name: 验证构建
-        run: |
-          # 检查文档文件数量
-          if [ "${{ steps.build.outputs.doc_files }}" -lt 5 ]; then
-            echo "::error::文档构建可能不完整，生成的文件数量过少"
-            exit 1
-          fi
-
-          # 检查索引文件
-          if [ ! -f "site/index.html" ]; then
-            echo "::error::未找到主页文件 (index.html)"
-            exit 1
-          fi
-
-          echo "文档构建验证通过"
-
-      - name: 部署到GitHub Pages
-        id: deploy
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
-          publish_branch: gh-pages
-          force_orphan: true
-          user_name: 'github-actions[bot]'
-          user_email: 'github-actions[bot]@users.noreply.github.com'
-          full_commit_message: "更新文档 - ${{ github.event.head_commit.message || '手动触发更新' }}"
-
-      - name: 生成部署URL
-        id: deployment
-        run: |
-          REPO_OWNER="${GITHUB_REPOSITORY_OWNER}"
-          REPO_NAME="${GITHUB_REPOSITORY#*/}"
-          DOCS_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}/"
-          echo "url=${DOCS_URL}" >> $GITHUB_OUTPUT
-
-          echo "::notice title=文档已部署::文档已成功部署到 ${DOCS_URL}"
-
-      - name: 部署摘要
-        run: |
-          echo "## 文档部署成功 ✅" >> $GITHUB_STEP_SUMMARY
-          echo "📚 **项目文档**: [${{ steps.deployment.outputs.url }}](${{ steps.deployment.outputs.url }})" >> $GITHUB_STEP_SUMMARY
-          echo "📄 **文件数量**: ${{ steps.build.outputs.doc_files }}" >> $GITHUB_STEP_SUMMARY
-          echo "🕒 **部署时间**: $(date)" >> $GITHUB_STEP_SUMMARY
+    uses: ./.github/workflows/reusable-docs.yml
+    with:
+      python-version: '3.12'
+      deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
