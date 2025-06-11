@@ -30,6 +30,10 @@ on:
           - github-pages
           - production
 
+# 权限配置
+permissions:
+  contents: write  # 允许部署到GitHub Pages
+
 # 全局环境变量
 env:
   PYTHON_DEFAULT: '3.12'
@@ -38,6 +42,6 @@ jobs:
   docs:
     name: 构建和部署文档
     uses: ./.github/workflows/reusable-docs.yml
-    with:
+        with:
       python-version: '3.12'
       deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}

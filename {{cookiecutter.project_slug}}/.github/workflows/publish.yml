@@ -21,6 +21,11 @@ on:
         default: false
         type: boolean
 
+# 权限配置
+permissions:
+  contents: write  # 允许创建GitHub Release和标签
+  id-token: write  # 允许发布到PyPI
+
 env:
   PYTHON_DEFAULT: '3.12'
   PYTHON_MIN: '3.10'

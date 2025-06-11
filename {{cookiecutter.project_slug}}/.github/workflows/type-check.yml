@@ -16,6 +16,11 @@ on:
         default: true
         type: boolean
 
+# 权限配置
+permissions:
+  contents: read  # 只读权限即可
+  checks: write   # 允许上传检查结果
+
 env:
   PYTHON_DEFAULT: "3.12"
   SOURCE_DIR: src

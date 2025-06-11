@@ -31,6 +31,9 @@ jobs:
   publish:
     name: 构建和发布
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # 允许创建GitHub Release
+      id-token: write  # 允许发布到PyPI
     outputs:
       pypi_url: ${{ steps.get_urls.outputs.pypi_url }}
       github_release_url: ${{ steps.get_urls.outputs.github_release_url }}

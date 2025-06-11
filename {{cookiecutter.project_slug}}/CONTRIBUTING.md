@@ -12,7 +12,7 @@
    ```
 3. 设置上游远程：
    ```bash
-   git remote add upstream https://github.com/{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.git
+   git remote add upstream https://github.com/YOUR_USERNAME/{{ cookiecutter.project_slug }}.git
    ```
 4. 创建虚拟环境（推荐使用venv或conda）
 5. 安装开发依赖：

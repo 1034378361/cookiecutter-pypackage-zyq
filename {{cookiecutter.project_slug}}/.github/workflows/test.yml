@@ -13,6 +13,12 @@ on:
         required: false
         type: string
 
+# 权限配置
+permissions:
+  contents: read  # 只读权限即可
+  checks: write   # 允许上传测试结果
+  pull-requests: write  # 允许评论PR
+
 env:
   SOURCE_DIR: src
   TEST_DIR: tests
