@@ -1,4 +1,4 @@
-# {{ cookiecutter.project_name }} 贡献指南
+# {{cookiecutter.project_name}} 贡献指南
 
 欢迎贡献！
 
@@ -6,8 +6,8 @@
 
 1. 克隆仓库
    ```bash
-   git clone git@github.com:{{ cookiecutter.github_username }}/{{ cookiecutter.project_slug }}.git
-   cd {{ cookiecutter.project_slug }}
+   git clone git@github.com:{{cookiecutter.github_username}}/{{cookiecutter.project_slug}}.git
+   cd {{cookiecutter.project_slug}}
    ```
 
 2. 安装开发依赖
@@ -82,9 +82,3 @@
 CI将自动构建并发布到PyPI。
 
 ## 详细贡献指南
-
-<!--
-此处将包含详细的贡献指南内容。
-生成的项目中，此处将使用以下语法引入CONTRIBUTING.md内容:
-{%- include-markdown "./_includes/contributing.md" %}
--->

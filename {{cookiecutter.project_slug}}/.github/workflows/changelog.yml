@@ -22,6 +22,10 @@ on:
         default: '.changelog.yml'
         type: string
 
+# 权限配置
+permissions:
+  contents: write  # 允许更新CHANGELOG
+
 jobs:
   update-changelog:
     if: >

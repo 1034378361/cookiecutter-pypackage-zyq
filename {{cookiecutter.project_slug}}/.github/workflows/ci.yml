@@ -34,6 +34,11 @@ on:
         required: false
         type: string
 
+# 权限配置
+permissions:
+  contents: write  # 允许创建发布和提交变更
+  id-token: write  # 允许发布到PyPI
+
 # 全局环境变量
 env:
   SOURCE_DIR: src
@@ -75,7 +80,7 @@ jobs:
 
     # 缓存pytest
     - name: 缓存pytest
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: |
           .pytest_cache
@@ -106,7 +111,7 @@ jobs:
     name: 代码质量检查
     needs: matrix-test
     uses: ./.github/workflows/reusable-quality.yml
-    with:
+      with:
       python-version: '3.12'
 
   # 使用可复用工作流进行类型检查
@@ -114,7 +119,7 @@ jobs:
     name: 类型检查
     needs: matrix-test
     uses: ./.github/workflows/reusable-type-check.yml
-    with:
+      with:
       python-version: '3.12'
       full-report: true
 
@@ -123,7 +128,7 @@ jobs:
     name: 文档构建
     needs: matrix-test
     uses: ./.github/workflows/reusable-docs.yml
-    with:
+      with:
       python-version: '3.12'
       deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
 
@@ -133,7 +138,7 @@ jobs:
     if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
     needs: [matrix-test, quality, type-check]
     uses: ./.github/workflows/reusable-changelog.yml
-    with:
+      with:
       mode: 'incremental'
       version: ${{ github.event.inputs.version }}
 
@@ -143,7 +148,7 @@ jobs:
     if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
     needs: [matrix-test, quality, type-check, changelog]
     uses: ./.github/workflows/reusable-publish.yml
-    with:
+      with:
       version: ${{ github.event.inputs.version }}
       release-notes: ${{ needs.changelog.outputs.release-notes }}
       python-version: '3.12'

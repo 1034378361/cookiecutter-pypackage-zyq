@@ -7,7 +7,8 @@
 # 创建跨平台辅助脚本
 define HELPER_SCRIPT
 #!/usr/bin/env python3
-"""跨平台Makefile辅助脚本。"""
+"""Cross-platform Makefile helper script."""
+
 import os
 import re
 import sys
@@ -16,13 +17,15 @@ import webbrowser
 from pathlib import Path
 from urllib.request import pathname2url
 
+
 def open_browser(filepath):
-    """在默认浏览器中打开文件。"""
+    """Open file in default web browser."""
     url = 'file://' + pathname2url(os.path.abspath(filepath))
     webbrowser.open(url)
 
+
 def print_help(makefile):
-    """打印Makefile帮助信息。"""
+    """Print help info from Makefile."""
     with open(makefile, 'r') as f:
         for line in f:
             match = re.match(r'^([a-zA-Z_-]+):.*?## (.*)$$', line)
@@ -30,19 +33,21 @@ def print_help(makefile):
                 target, help = match.groups()
                 print(f"{target:20} {help}")
 
+
 def clean_paths(paths):
-    """删除指定的文件和目录。"""
+    """Remove specified files and directories."""
     for path_pattern in paths:
         for path in Path('.').glob(path_pattern):
             if path.is_dir():
-                print(f"删除目录: {path}")
+                print(f"Removing directory: {path}")
                 shutil.rmtree(path, ignore_errors=True)
             elif path.is_file():
-                print(f"删除文件: {path}")
+                print(f"Removing file: {path}")
                 path.unlink()
 
+
 def check_content(pattern, directories):
-    """检查文件内容中是否有指定模式。"""
+    """Check files in directories for matching pattern."""
     found = False
     regex = re.compile(pattern)
 
@@ -57,12 +62,13 @@ def check_content(pattern, directories):
                     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                         if regex.search(content):
-                            print(f"在 {filepath} 中发现匹配内容")
+                            print(f"Match found in {filepath}")
                             found = True
                 except Exception as e:
-                    print(f"无法读取 {filepath}: {e}")
+                    print(f"Could not read {filepath}: {e}")
 
     return found
+
 
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else "help"
@@ -79,13 +85,15 @@ if __name__ == "__main__":
         found = check_content(pattern, dirs)
         sys.exit(1 if found else 0)
     else:
-        print(f"未知或不完整的命令: {' '.join(sys.argv[1:])}")
+        print(f"Unknown or incomplete command: {' '.join(sys.argv[1:])}")
         sys.exit(1)
+
 endef
 export HELPER_SCRIPT
 
 # 创建辅助脚本
 $(shell echo "$$HELPER_SCRIPT" > .make_helper.py && chmod +x .make_helper.py)
+
 
 help: ## 显示帮助信息
 	@python .make_helper.py help $(MAKEFILE_LIST)

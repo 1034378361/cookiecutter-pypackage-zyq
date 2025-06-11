@@ -2,7 +2,7 @@
 
 ## 开发者
 
-* {{ cookiecutter.full_name }} <{{ cookiecutter.email }}>
+* {{cookiecutter.full_name}} <{{cookiecutter.email}}>
 
 ## 贡献者
 
