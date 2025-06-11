@@ -1,9 +1,6 @@
 name: 自动更新CHANGELOG
 
 on:
-  push:
-    tags:
-      - 'v*'
   pull_request:
     types: [closed]
     branches:
@@ -28,134 +25,10 @@ on:
 jobs:
   update-changelog:
     if: >
-      github.event_name == 'push' ||
       (github.event_name == 'pull_request' && github.event.pull_request.merged == true) ||
       github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      version: ${{ steps.extract_info.outputs.version }}
-      has_changes: ${{ steps.check_changes.outputs.changed }}
-      change_summary: ${{ steps.extract_info.outputs.summary }}
-
-    steps:
-      - uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: 设置Python
-        uses: actions/setup-python@v5.6.0
-        with:
-          python-version: '3.x'
-          cache: pip
-
-      - name: 缓存Git历史
-        uses: actions/cache@v4.0.2
-        id: git-cache
-        with:
-          path: |
-            .git/objects/
-            .git/refs/
-          key: ${{ runner.os }}-git-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-git-
-
-      - name: 缓存脚本输出
-        uses: actions/cache@v4.0.2
-        id: changelog-cache
-        with:
-          path: .changelog-cache/
-          key: changelog-${{ hashFiles('scripts/generate_changelog.py', '.changelog.yml') }}-${{ github.sha }}
-          restore-keys: |
-            changelog-${{ hashFiles('scripts/generate_changelog.py', '.changelog.yml') }}-
-
-      - name: 创建缓存目录
-        run: mkdir -p .changelog-cache
-
-      - name: 安装依赖
-        run: |
-          python -m pip install --upgrade pip
-          pip install gitpython pyyaml
-
-      - name: 确定更新模式和提交信息
-        id: config
-        run: |
-          if [ "${{ github.event_name }}" == "push" ]; then
-            echo "mode=incremental" >> $GITHUB_OUTPUT
-            echo "commit_message=更新 CHANGELOG ${{ github.ref_name }}" >> $GITHUB_OUTPUT
-            echo "config_file=.changelog.yml" >> $GITHUB_OUTPUT
-          elif [ "${{ github.event_name }}" == "pull_request" ]; then
-            echo "mode=incremental" >> $GITHUB_OUTPUT
-            echo "commit_message=更新 CHANGELOG (PR #${{ github.event.pull_request.number }})" >> $GITHUB_OUTPUT
-            echo "config_file=.changelog.yml" >> $GITHUB_OUTPUT
-          else
-            echo "mode=${{ github.event.inputs.mode }}" >> $GITHUB_OUTPUT
-            echo "commit_message=手动更新 CHANGELOG" >> $GITHUB_OUTPUT
-            echo "config_file=${{ github.event.inputs.config }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 检查配置文件
-        run: |
-          if [ ! -f "${{ steps.config.outputs.config_file }}" ]; then
-            echo "警告: 配置文件 ${{ steps.config.outputs.config_file }} 不存在，将使用默认配置"
-          fi
-
-      - name: 更新CHANGELOG
-        id: update_changelog
-        run: |
-          # 使用缓存加速脚本执行
-          CACHE_FILE=".changelog-cache/last_run.json"
-          CACHE_ARGS=""
-
-          if [ -f "$CACHE_FILE" ]; then
-            CACHE_ARGS="--cache-file $CACHE_FILE"
-          fi
-
-          if [ "${{ steps.config.outputs.mode }}" == "full" ]; then
-            python scripts/generate_changelog.py --since $(git rev-list --max-parents=0 HEAD) --config "${{ steps.config.outputs.config_file }}" $CACHE_ARGS --verbose
-          else
-            python scripts/generate_changelog.py --config "${{ steps.config.outputs.config_file }}" $CACHE_ARGS --verbose
-          fi
-
-          # 更新缓存
-          echo "{\"last_run\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\", \"sha\": \"${{ github.sha }}\"}" > "$CACHE_FILE"
-
-      - name: 检查CHANGELOG是否有更改
-        id: check_changes
-        run: |
-          if git diff --exit-code CHANGELOG.md; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-          else
-            echo "changed=true" >> $GITHUB_OUTPUT
-          fi
-
-      - name: 提取更新信息
-        id: extract_info
-        if: steps.check_changes.outputs.changed == 'true'
-        run: |
-          # 提取最新版本号
-          VERSION=$(grep -m 1 -o '## [0-9]\+\.[0-9]\+\.[0-9]\+' CHANGELOG.md | head -1 | sed 's/## //')
-          if [ -n "$VERSION" ]; then
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          else
-            # 如果找不到版本号，使用当前日期作为标识
-            echo "version=unknown-$(date +%Y%m%d)" >> $GITHUB_OUTPUT
-          fi
-
-          # 提取变更摘要（前5行）
-          SUMMARY=$(sed -n '/^## /,/^## /p' CHANGELOG.md | sed '1d;/^## /,$d' | head -5 | tr '\n' ' ' | sed 's/"/\\"/g')
-          echo "summary<<EOF" >> $GITHUB_OUTPUT
-          echo "${SUMMARY}..." >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: 提交CHANGELOG更改
-        if: steps.check_changes.outputs.changed == 'true'
-        uses: stefanzweifel/git-auto-commit-action@v5.2.0
-        with:
-          commit_message: ${{ steps.config.outputs.commit_message }}
-          file_pattern: CHANGELOG.md
-          commit_user_name: GitHub Actions
-          commit_user_email: actions@github.com
-          commit_author: GitHub Actions <actions@github.com>
+    name: 更新变更日志
+    uses: ./.github/workflows/reusable-changelog.yml
+    with:
+      mode: ${{ github.event.inputs.mode || 'incremental' }}
+      config-file: ${{ github.event.inputs.config || '.changelog.yml' }}
