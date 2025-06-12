@@ -58,13 +58,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install pdm
-        if pdm group list | grep -q docs; then
-          echo "使用docs依赖组"
-          pdm install -G docs
-        else
-          echo "使用dev依赖组"
-          pdm install -G dev
-        fi
+        echo "使用docs依赖组"
+        pdm install -G docs
+
 
     - name: 构建文档
       id: build
@@ -83,7 +79,7 @@ jobs:
     - name: 部署到GitHub Pages
       id: deploy
       if: inputs.deploy == true
-      uses: peaceiris/actions-gh-pages@v3
+      uses: peaceiris/actions-gh-pages@v4
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_dir: ./site/
