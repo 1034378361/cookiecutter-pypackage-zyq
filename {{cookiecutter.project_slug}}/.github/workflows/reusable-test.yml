@@ -14,7 +14,7 @@ on:
         type: number
         default: 85
     outputs:
-      tests-failed:
+      tests_failed:
         description: '测试是否失败'
         value: ${{ jobs.test.outputs.tests_failed }}
       coverage:
@@ -86,12 +86,17 @@ jobs:
     - name: 运行测试
       id: test_run
       run: |
+        threshold=${{ inputs.coverage-threshold || 85 }}
+        if [ -f pyproject.toml ]; then
+          val=$(grep -Po '(?<=cov-fail-under=)\\d+' pyproject.toml | head -1)
+          if [ -n "$val" ]; then threshold=$val; fi
+        fi
         pdm run pytest \
           --cov=$SOURCE_DIR \
           --cov-report=term \
           --cov-report=xml \
           --cov-report=html \
-          --cov-fail-under=${{ inputs.coverage-threshold }} \
+          --cov-fail-under=$threshold \
           --junitxml=junit/test-results.xml \
           $TEST_DIR/ || echo "tests_failed=true" >> $GITHUB_OUTPUT
 
@@ -117,4 +122,12 @@ jobs:
         path: |
           junit/test-results.xml
           htmlcov/
+        retention-days: 7
+
+    - name: 上传pytest日志
+      if: always()
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: pytest-log-${{ inputs.python-version }}
+        path: .pytest_cache/
         retention-days: 7

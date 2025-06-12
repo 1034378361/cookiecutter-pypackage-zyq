@@ -9,13 +9,13 @@ on:
         type: string
         default: '3.12'
     outputs:
-      ruff-failed:
+      ruff_failed:
         description: 'Ruff检查是否失败'
         value: ${{ jobs.quality.outputs.ruff_failed }}
-      format-failed:
+      format_failed:
         description: '格式检查是否失败'
         value: ${{ jobs.quality.outputs.format_failed }}
-      security-failed:
+      security_failed:
         description: '安全检查是否失败'
         value: ${{ jobs.quality.outputs.security_failed }}
 
@@ -99,3 +99,13 @@ jobs:
         else
           echo "项目未配置Bandit，跳过安全检查"
         fi
+
+    - name: 上传Ruff和Bandit日志
+      if: always()
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: quality-logs-${{ inputs.python-version }}
+        path: |
+          .cache/
+          .mypy_cache/
+        retention-days: 7

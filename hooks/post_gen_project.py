@@ -6,6 +6,7 @@ import stat
 import subprocess
 import shutil
 import sys
+import toml
 
 def print_colored(message, color="reset"):
     """打印彩色文本"""
@@ -41,163 +42,82 @@ def info(message):
     print_colored(f"信息: {message}", "blue")
 
 def configure_dependencies():
-    """根据项目类型配置依赖"""
-    import re
-    
+    """根据项目类型配置依赖分组（新版分组结构）"""
     project_type = "{{ cookiecutter.project_type }}"
     cli_interface = "{{ cookiecutter.command_line_interface }}"
-    # 使用绝对路径确保在任何工作目录下都能找到pyproject.toml
     pyproject_path = os.path.join(os.getcwd(), "pyproject.toml")
-    
-    # 创建备份
     backup_path = f"{pyproject_path}.bak"
     try:
         shutil.copy2(pyproject_path, backup_path)
         info(f"已创建配置文件备份: {backup_path}")
     except Exception as e:
         warning(f"创建配置备份失败: {str(e)}")
-    
-    # 读取原始文件
+
     with open(pyproject_path, "r", encoding="utf-8") as f:
-        content = f.read()
-    
-    # 保存处理前的内容以便对比
-    original_content = content
-    
-    try:
-        # 1. 处理核心依赖部分
-        # 查找dependencies列表部分
-        dependencies_section = re.search(r'dependencies\s*=\s*\[(.*?)\]', content, re.DOTALL)
-        if dependencies_section:
-            # 获取依赖列表内容
-            deps_list_content = dependencies_section.group(1)
-            # 将内容分割成单独的依赖项
-            deps_lines = [line.strip() for line in deps_list_content.split(',') if line.strip()]
-            
-            # 筛选依赖项
-            filtered_deps = []
-            for dep in deps_lines:
-                dep_cleaned = dep.strip()
-                
-                # 移除不需要的依赖
-                if project_type != "Web Service" and any(pkg in dep_cleaned for pkg in ["fastapi", "uvicorn", "pydantic"]):
-                    continue
-                if project_type != "Data Science" and any(pkg in dep_cleaned for pkg in ["numpy", "pandas", "matplotlib", "scikit-learn"]):
-                    continue
-                if cli_interface == "No command-line interface" and "typer" in dep_cleaned:
-                    continue
-                if cli_interface == "Argparse" and "typer" in dep_cleaned:
-                    continue
-                
-                # 保留有效的依赖
-                filtered_deps.append(dep_cleaned)
-            
-            # 重新构建依赖列表
-            new_deps_content = ",\n    ".join(filtered_deps)
-            new_deps_section = f"dependencies = [\n    {new_deps_content}\n]"
-            
-            # 替换原始依赖部分
-            content = content.replace(dependencies_section.group(0), new_deps_section)
-        
-        # 2. 重新构建可选依赖部分
-        # 找到optional-dependencies部分的开始
-        optional_deps_section = re.search(r'^\[project\.optional-dependencies\].*?(?=^\[|\Z)', content, re.DOTALL | re.MULTILINE)
-        
-        if optional_deps_section:
-            # 提取当前dev部分的内容
-            dev_deps_match = re.search(r'dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
-            dev_deps = dev_deps_match.group(1) if dev_deps_match else ""
-            
-            # 创建新的可选依赖内容
-            new_optional_deps = "[project.optional-dependencies]\ndev = [" + dev_deps + "]\n\n"
-            
-            # 添加特定项目类型的依赖组
-            if project_type == "Web Service":
-                new_optional_deps += """# Web Service 特定依赖
-web = [
-    "fastapi>=0.100.0",
-    "uvicorn>=0.23.0",
-    "pydantic>=2.0.0",
-]
+        data = toml.load(f)
 
-"""
-            
-            if project_type == "Data Science":
-                new_optional_deps += """# Data Science 特定依赖
-data = [
-    "numpy>=1.24.0",
-    "pandas>=2.0.0",
-    "matplotlib>=3.7.0",
-    "scikit-learn>=1.3.0",
-]
+    original_data = toml.dumps(data)
+    changed = False
 
-"""
-            
-            # 添加特定项目类型的开发依赖组
-            if project_type == "Web Service":
-                web_dev_match = re.search(r'web-dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
-                if web_dev_match:
-                    web_dev_deps = web_dev_match.group(1)
-                    new_optional_deps += "web-dev = [" + web_dev_deps + "]\n\n"
-            
-            if project_type == "Data Science":
-                data_dev_match = re.search(r'data-dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
-                if data_dev_match:
-                    data_dev_deps = data_dev_match.group(1)
-                    new_optional_deps += "data-dev = [" + data_dev_deps + "]\n\n"
-            
-            if project_type == "CLI Tool":
-                cli_dev_match = re.search(r'cli-dev\s*=\s*\[(.*?)\]', optional_deps_section.group(0), re.DOTALL)
-                if cli_dev_match:
-                    cli_dev_deps = cli_dev_match.group(1)
-                    new_optional_deps += "cli-dev = [" + cli_dev_deps + "]\n\n"
-            
-            # 构建full-dev依赖
-            active_dev_groups = ["dev"]
-            if project_type == "Web Service":
-                active_dev_groups.append("web-dev")
-            elif project_type == "Data Science":
-                active_dev_groups.append("data-dev")
-            elif project_type == "CLI Tool":
-                active_dev_groups.append("cli-dev")
-                
-            new_optional_deps += f"""full-dev = [
-    {', '.join([f'"{group}"' for group in active_dev_groups])}
-]
-"""
-            
-            # 替换可选依赖部分
-            content = content.replace(optional_deps_section.group(0), new_optional_deps)
-    
-    except Exception as e:
-        warning(f"处理依赖时出错: {str(e)}")
-        warning("尝试使用备份文件恢复原始配置")
-        try:
-            if os.path.exists(backup_path):
-                shutil.copy2(backup_path, pyproject_path)
-                info("已恢复原始配置")
-            return
-        except Exception as restore_error:
-            error(f"恢复备份失败: {str(restore_error)}")
-            return
-    
-    # 仅当内容有变化时写入文件
-    if content != original_content:
+    # 1. dependencies 主依赖处理
+    core_deps = data["project"].get("dependencies", [])
+    new_core_deps = []
+    for dep in core_deps:
+        if project_type != "Web Service" and any(pkg in dep for pkg in ["fastapi", "uvicorn", "pydantic"]):
+            changed = True
+            continue
+        if project_type != "Data Science" and any(pkg in dep for pkg in ["numpy", "pandas", "matplotlib", "scikit-learn"]):
+            changed = True
+            continue
+        if cli_interface == "No command-line interface" and "typer" in dep:
+            changed = True
+            continue
+        if cli_interface == "Argparse" and "typer" in dep:
+            changed = True
+            continue
+        new_core_deps.append(dep)
+    data["project"]["dependencies"] = new_core_deps
+
+    # 2. optional-dependencies 分组处理
+    opt = data["project"].get("optional-dependencies", {})
+    # 只保留新版分组
+    keep_groups = ["dev", "test", "lint", "typing", "docs", "changelog", "web-dev", "data-dev", "cli-dev", "full-dev"]
+    opt = {k: v for k, v in opt.items() if k in keep_groups}
+
+    # dev组只保留开发体验工具
+    dev_keep = [
+        "pre-commit", "ipython", "ipdb", "python-dotenv", "gitpython", "bump2version"
+    ]
+    opt["dev"] = [dep for dep in opt.get("dev", []) if any(tool in dep for tool in dev_keep)]
+
+    # 根据项目类型移除无关分组
+    if project_type != "Web Service":
+        opt.pop("web-dev", None)
+    if project_type != "Data Science":
+        opt.pop("data-dev", None)
+    if project_type != "CLI Tool":
+        opt.pop("cli-dev", None)
+
+    # full-dev聚合所有开发分组
+    full_dev = ["dev", "test", "lint", "typing", "docs", "changelog"]
+    if project_type == "Web Service":
+        full_dev.append("web-dev")
+    if project_type == "Data Science":
+        full_dev.append("data-dev")
+    if project_type == "CLI Tool":
+        full_dev.append("cli-dev")
+    opt["full-dev"] = full_dev
+
+    data["project"]["optional-dependencies"] = opt
+
+    # 写回文件（仅有变化时）
+    new_data = toml.dumps(data)
+    if new_data != original_data:
         with open(pyproject_path, "w", encoding="utf-8") as f:
-            f.write(content)
-        
-        changes = []
-        if project_type in ["Web Service", "Data Science"]:
-            changes.append(f"项目类型({project_type})")
-        if cli_interface != "Typer":
-            changes.append(f"命令行接口({cli_interface})")
-            
-        if changes:
-            info(f"已根据{' 和 '.join(changes)}配置依赖")
-        else:
-            info("已配置项目依赖")
+            f.write(new_data)
+        info("已根据项目类型和命令行接口优化依赖分组")
     else:
-        info("依赖配置未发生变化")
+        info("依赖分组未发生变化")
 
 def normalize_gitattributes():
     """确保.gitattributes文件使用规范的行尾。"""

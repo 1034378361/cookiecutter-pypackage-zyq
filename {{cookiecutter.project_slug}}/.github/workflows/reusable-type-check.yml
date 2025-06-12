@@ -14,7 +14,7 @@ on:
         type: boolean
         default: false
     outputs:
-      type-check-failed:
+      type_check_failed:
         description: '类型检查是否失败'
         value: ${{ jobs.type_check.outputs.type_check_failed }}
 
@@ -106,4 +106,13 @@ jobs:
       with:
         name: mypy-report
         path: mypy-report/
+        retention-days: 7
+
+    - name: 上传类型检查缓存
+      if: always()
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: mypy-cache-${{ inputs.python-version }}
+        path: |
+          .mypy_cache/
         retention-days: 7
