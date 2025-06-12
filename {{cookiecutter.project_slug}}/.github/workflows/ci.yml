@@ -103,15 +103,13 @@ jobs:
   # 使用可复用工作流进行代码质量检查
   quality:
     name: 代码质量检查
-    needs: matrix-test
     uses: ./.github/workflows/reusable-quality.yml
     with:
       python-version: '3.12'
 
   # 使用可复用工作流进行类型检查
-  type-check:
+  type_check:
     name: 类型检查
-    needs: matrix-test
     uses: ./.github/workflows/reusable-type-check.yml
     with:
       python-version: '3.12'
@@ -126,24 +124,12 @@ jobs:
       python-version: '3.12'
       deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
 
-  # 当手动触发发布时，使用可复用工作流更新变更日志和发布
+  # 当手动触发发布时，使用可复用工作流更新变更日志
   changelog:
     name: 更新变更日志
     if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
-    needs: [matrix-test, quality, type-check]
+    needs: [matrix-test, quality, type_check]
     uses: ./.github/workflows/reusable-changelog.yml
     with:
       mode: 'incremental'
       version: ${{ github.event.inputs.version }}
-
-  # 发布到PyPI
-  publish:
-    name: 发布到PyPI
-    if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
-    needs: [matrix-test, quality, type-check, changelog]
-    uses: ./.github/workflows/reusable-publish.yml
-    with:
-      version: ${{ github.event.inputs.version }}
-      release-notes: ${{ needs.changelog.outputs.release-notes }}
-      python-version: '3.12'
-    secrets: inherit

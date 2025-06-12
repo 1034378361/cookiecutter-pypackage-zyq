@@ -9,7 +9,7 @@
   "python_version": ["3.12", "3.11", "3.10"],
   "project_type": ["Standard Library", "CLI Tool", "Web Service", "Data Science", "Custom"],
   "command_line_interface": ["Typer", "Argparse", "No command-line interface"],
-  "open_source_license": ["MIT license", "BSD license", "ISC license", "Apache Software License 2.0", "GNU General Public License v3", "Not open source"],
+  "open_source_license": ["MIT License", "BSD License", "ISC License (ISCL)", "Apache Software License", "GNU General Public License v3 (GPLv3)", "Not open source"],
   
   "_copy_without_render": [
     ".github/workflows/*.yml"

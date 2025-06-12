@@ -1,147 +1,62 @@
-name: 发布到PyPI
+name: Python publish to pypi
 
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch:
+      - 'v*'  # 自动：推送带v前缀的标签时触发
+  workflow_dispatch:  # 手动：允许在Actions手动运行
     inputs:
-      version:
-        description: '版本号 (如 1.0.0)'
+      tag_name:
+        description: '发布的版本号（例如：v1.0.0）'
         required: true
-        type: string
-      tag:
-        description: '是否创建标签'
-        required: false
-        default: true
-        type: boolean
-      skip_tests:
-        description: '是否跳过测试'
-        required: false
-        default: false
-        type: boolean
-
-# 权限配置
-permissions:
-  contents: write  # 允许创建GitHub Release和标签
-  id-token: write  # 允许发布到PyPI
-
-env:
-  PYTHON_DEFAULT: '3.12'
-  PYTHON_MIN: '3.10'
 
 jobs:
-  # 验证版本号
-  validate:
-    name: 验证版本和测试
+  publishToPyPI:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.check_version.outputs.version }}
-      is_valid: ${{ steps.check_version.outputs.is_valid }}
+    permissions:
+      contents: write
 
     steps:
-    - uses: actions/checkout@v4.2.2
-      with:
-        fetch-depth: 0
-        fetch-tags: true
-
-    - name: 设置Python
-      uses: actions/setup-python@v5.6.0
-      with:
-        python-version: '3.12'
-        cache: pip
-
-    - name: 检查版本号
-      id: check_version
-      run: |
-        if [[ "${{ github.event_name }}" == "push" ]]; then
-          VERSION=${GITHUB_REF#refs/tags/v}
-          IS_VALID=true
-          echo "从标签获取版本: $VERSION"
-        else
-          VERSION=${{ github.event.inputs.version }}
-          # 验证版本号格式
-          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            IS_VALID=true
-            echo "版本号格式有效: $VERSION"
-          else
-            IS_VALID=false
-            echo "::error::版本号格式无效: $VERSION (应为 X.Y.Z 格式)"
-          fi
-        fi
-
-        # 检查版本号是否已存在
-        if [ "$IS_VALID" = "true" ] && git tag -l | grep -q "v$VERSION"; then
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "::warning::版本 v$VERSION 已存在。如果继续，这将覆盖现有版本。"
-          fi
-        fi
-
-        echo "version=$VERSION" >> $GITHUB_OUTPUT
-        echo "is_valid=$IS_VALID" >> $GITHUB_OUTPUT
-
-        echo "version=$VERSION"
-        echo "is_valid=$IS_VALID"
-
-    - name: 验证测试通过
-      if: ${{ github.event.inputs.skip_tests != 'true' }}
-      run: |
-        # 检查最近的测试工作流是否成功
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          echo "手动触发发布，检查最近的测试状态..."
-          REPO="${GITHUB_REPOSITORY}"
-          TEST_STATUS=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${REPO}/actions/workflows/test.yml/runs?status=completed&per_page=1" | \
-            jq -r '.workflow_runs[0].conclusion')
-
-          if [ "$TEST_STATUS" != "success" ]; then
-            echo "::warning::最近的测试工作流状态为: $TEST_STATUS。建议在发布前确保所有测试通过。"
-          else
-            echo "最近的测试工作流状态: 成功"
-          fi
-        fi
-
-  # 创建标签（如果需要）
-  create-tag:
-    name: 创建版本标签
-    needs: validate
-    if: >
-      needs.validate.outputs.is_valid == 'true' &&
-      github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.tag == 'true'
-    runs-on: ubuntu-latest
-
-    steps:
-    - uses: actions/checkout@v4.2.2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: 0
 
-    - name: 创建标签
+    - name: 设置 Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 安装依赖
       run: |
-        VERSION=${{ needs.validate.outputs.version }}
-        git config --local user.name "GitHub Action"
-        git config --local user.email "action@github.com"
-        git tag -a "v${VERSION}" -m "Release v${VERSION}"
-        git push origin "v${VERSION}"
+        python -m pip install --upgrade pip
+        pip install build wheel setuptools twine
 
-  # 生成变更日志
-  changelog:
-    name: 生成变更日志
-    needs: [validate, create-tag]
-    if: needs.validate.outputs.is_valid == 'true'
-    uses: ./.github/workflows/reusable-changelog.yml
-    with:
-      version: ${{ needs.validate.outputs.version }}
-      mode: 'incremental'
+    - name: 构建包
+      run: python -m build
 
-  # 构建和发布
-  publish:
-    name: 构建和发布
-    needs: [validate, changelog]
-    if: needs.validate.outputs.is_valid == 'true'
-    uses: ./.github/workflows/reusable-publish.yml
-    with:
-      version: ${{ needs.validate.outputs.version }}
-      release-notes: ${{ needs.changelog.outputs.release-notes }}
-      python-version: '3.12'
-    secrets: inherit
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist
+        path: dist/
+
+    - name: 创建 GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ github.event.inputs.tag_name || github.ref_name }}
+        files: |
+          dist/*.whl
+          dist/*.tar.gz
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+    - name: 发布到PyPI
+      run: |
+        python -m twine upload dist/*
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}

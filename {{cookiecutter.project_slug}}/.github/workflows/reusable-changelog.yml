@@ -77,7 +77,11 @@ jobs:
       - name: 安装依赖
         run: |
           python -m pip install --upgrade pip
-          pip install gitpython pyyaml
+          if command -v pdm >/dev/null 2>&1; then
+            pdm install -G changelog || pip install gitpython pyyaml
+          else
+            pip install gitpython pyyaml
+          fi
 
       - name: 设置版本号
         id: set_version
