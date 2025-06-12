@@ -186,6 +186,7 @@ ignore = [
     "D203",  # 和D211冲突
     "D213",  # 和D212冲突
     "D401",  # First line of docstring should be imperative
+    "COM812"
 ]
 
 # 不检查的错误类型

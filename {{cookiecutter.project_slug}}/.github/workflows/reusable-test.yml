@@ -46,7 +46,7 @@ jobs:
 
     # 缓存PDM和依赖
     - name: 缓存PDM
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: |
           ~/.pdm
@@ -58,7 +58,7 @@ jobs:
 
     # 缓存pytest
     - name: 缓存pytest
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: |
           .pytest_cache

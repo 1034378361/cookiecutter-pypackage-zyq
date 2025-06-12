@@ -23,7 +23,7 @@ env:
   SOURCE_DIR: src
   TEST_DIR: tests
   PYTHON_DEFAULT: "3.12"
-  MIN_PYTHON: "3.8"
+  MIN_PYTHON: "3.10"
   COVERAGE_THRESHOLD: 85
 
 jobs:

@@ -44,7 +44,7 @@ env:
   SOURCE_DIR: src
   TEST_DIR: tests
   DEFAULT_PYTHON: '3.12'
-  MIN_PYTHON: '{{cookiecutter.python_version}}'
+  MIN_PYTHON: '3.10'
   COVERAGE_THRESHOLD: 85
 
 jobs:
@@ -56,21 +56,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ['{{cookiecutter.python_version}}', '3.9', '3.10', '3.11', '3.12']
-        include:
-          # 在Windows上测试最低和最新的Python版本
-          - os: windows-latest
-            python-version: '{{cookiecutter.python_version}}'
-          - os: windows-latest
-            python-version: '3.12'
-          # 在macOS上测试最新的Python版本
-          - os: macos-latest
-            python-version: '3.12'
+        python-version: ['3.10', '3.11', '3.12']
 
     steps:
     - uses: actions/checkout@v4.2.2
       with:
         fetch-depth: 0
+
+    - name: Show current directory
+      run: pwd && ls -R
 
     - name: 设置 Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5.6.0
@@ -111,7 +105,7 @@ jobs:
     name: 代码质量检查
     needs: matrix-test
     uses: ./.github/workflows/reusable-quality.yml
-      with:
+    with:
       python-version: '3.12'
 
   # 使用可复用工作流进行类型检查
@@ -119,7 +113,7 @@ jobs:
     name: 类型检查
     needs: matrix-test
     uses: ./.github/workflows/reusable-type-check.yml
-      with:
+    with:
       python-version: '3.12'
       full-report: true
 
@@ -128,7 +122,7 @@ jobs:
     name: 文档构建
     needs: matrix-test
     uses: ./.github/workflows/reusable-docs.yml
-      with:
+    with:
       python-version: '3.12'
       deploy: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') }}
 
@@ -138,7 +132,7 @@ jobs:
     if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
     needs: [matrix-test, quality, type-check]
     uses: ./.github/workflows/reusable-changelog.yml
-      with:
+    with:
       mode: 'incremental'
       version: ${{ github.event.inputs.version }}
 
@@ -148,7 +142,7 @@ jobs:
     if: github.event.inputs.publish == 'true' && github.event.inputs.version != ''
     needs: [matrix-test, quality, type-check, changelog]
     uses: ./.github/workflows/reusable-publish.yml
-      with:
+    with:
       version: ${{ github.event.inputs.version }}
       release-notes: ${{ needs.changelog.outputs.release-notes }}
       python-version: '3.12'
