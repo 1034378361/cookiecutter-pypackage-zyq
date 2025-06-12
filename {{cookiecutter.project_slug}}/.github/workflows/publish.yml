@@ -80,6 +80,9 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "is_valid=$IS_VALID" >> $GITHUB_OUTPUT
 
+        echo "version=$VERSION"
+        echo "is_valid=$IS_VALID"
+
     - name: 验证测试通过
       if: ${{ github.event.inputs.skip_tests != 'true' }}
       run: |

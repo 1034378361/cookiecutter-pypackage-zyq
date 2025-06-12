@@ -6,7 +6,7 @@
   "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '_').replace('-', '_') }}",
   "project_short_description": "Python项目模板，包含创建Python包所需的所有基础结构。",
   "version": "0.1.0",
-  "python_version": ["3.10", "3.11", "3.12"],
+  "python_version": ["3.12", "3.11", "3.10"],
   "project_type": ["Standard Library", "CLI Tool", "Web Service", "Data Science", "Custom"],
   "command_line_interface": ["Typer", "Argparse", "No command-line interface"],
   "open_source_license": ["MIT license", "BSD license", "ISC license", "Apache Software License 2.0", "GNU General Public License v3", "Not open source"],

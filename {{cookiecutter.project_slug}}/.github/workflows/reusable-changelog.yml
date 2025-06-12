@@ -52,7 +52,7 @@ jobs:
           cache: pip
 
       - name: 缓存Git历史
-        uses: actions/cache@v4.0.2
+        uses: actions/cache@v4
         id: git-cache
         with:
           path: |
@@ -63,7 +63,7 @@ jobs:
             ${{ runner.os }}-git-
 
       - name: 缓存脚本输出
-        uses: actions/cache@v4.0.2
+        uses: actions/cache@v4
         id: changelog-cache
         with:
           path: .changelog-cache/

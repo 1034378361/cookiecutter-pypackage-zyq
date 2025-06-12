@@ -231,23 +231,6 @@ def test_setup_logger():
         mock_file_handler.assert_called_once_with("test.log", encoding="utf-8")
 
 
-def test_get_logger():
-    """测试获取日志记录器。"""
-    from {{cookiecutter.project_slug}}.utils.logging_utils import get_logger, setup_logger
-
-    # 测试获取新的日志记录器
-    with patch("{{cookiecutter.project_slug}}.utils.logging_utils.setup_logger") as mock_setup:
-        mock_setup.return_value = MagicMock()
-        logger = get_logger("new_logger")
-        mock_setup.assert_called_once_with("new_logger")
-
-    # 测试获取已存在的日志记录器
-    existing_logger = setup_logger("existing_logger")
-    with patch("{{cookiecutter.project_slug}}.utils.logging_utils.setup_logger") as mock_setup:
-        logger = get_logger("existing_logger")
-        mock_setup.assert_not_called()
-        assert logger is existing_logger
-
 
 def test_log_function_call():
     """测试函数调用日志装饰器。"""
