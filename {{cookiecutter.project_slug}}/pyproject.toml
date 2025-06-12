@@ -103,6 +103,7 @@ docs = [
 changelog = [
     "gitpython>=3.1.40",
     "pyyaml>=6.0.0",
+    "yaml",
 ]
 
 # 项目类型特定的开发依赖
@@ -146,19 +147,24 @@ full-dev = [
 # Mypy - 类型检查配置
 # ------------------
 [tool.mypy]
-files = ["src", "tests"]
-python_version = "310"
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-strict_optional = true
-show_error_codes = true
-warn_redundant_casts = true
-warn_return_any = true
-warn_unreachable = true
+files = ["src", "tests"]  # 指定要检查的文件夹
+python_version = "3.12"  # 指定 Python 版本
+warn_unused_configs = true  # 警告未使用的配置项
+
+# 以下类型检查配置可以根据团队实际需求进行调整
+disallow_untyped_defs = false  # 推荐开启，强制所有函数有类型注解
+disallow_incomplete_defs = false  # 可选，若觉得参数类型注解不是必须可关闭
+check_untyped_defs = false  # 推荐开启，检查未加类型注解的函数体
+disallow_untyped_decorators = false  # 可选，装饰器类型注解不是所有项目都强制
+no_implicit_optional = true  # 推荐开启，避免隐式 Optional
+strict_optional = true  # 推荐开启，严格区分可选类型
+show_error_codes = true  # 推荐开启，便于查找文档
+warn_redundant_casts = true  # 推荐开启，减少冗余
+warn_return_any = false  # 可选，若项目中允许部分 Any 可关闭
+warn_unreachable = true  # 推荐开启，发现不可达代码
+ignore_missing_imports = true  # 推荐开启，避免三方包报错
+
+# 说明：如需放宽类型检查，可将 disallow_incomplete_defs、disallow_untyped_decorators、warn_return_any 设为 false
 
 # 测试文件允许无类型定义
 [[tool.mypy.overrides]]

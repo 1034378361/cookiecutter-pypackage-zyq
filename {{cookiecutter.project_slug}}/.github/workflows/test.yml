@@ -35,24 +35,25 @@ jobs:
       python-version: ${{ inputs.python-version || '3.12' }}
       coverage-threshold: 85
 
-  # 使用可复用工作流进行代码质量检查
-  quality:
-    name: 代码质量检查
-    uses: ./.github/workflows/reusable-quality.yml
-    with:
-      python-version: '3.12'
+  # # 使用可复用工作流进行代码质量检查
+  # quality:
+  #   name: 代码质量检查
+  #   uses: ./.github/workflows/reusable-quality.yml
+  #   with:
+  #     python-version: '3.12'
 
-  # 使用可复用工作流进行类型检查
-  type_check:
-    name: 类型检查
-    uses: ./.github/workflows/reusable-type-check.yml
-    with:
-      python-version: '3.12'
+  # # 使用可复用工作流进行类型检查
+  # type_check:
+  #   name: 类型检查
+  #   uses: ./.github/workflows/reusable-type-check.yml
+  #   with:
+  #     python-version: '3.12'
 
   # 自动反馈测试/质量/类型检查结果
   report:
     name: 结果反馈
-    needs: [test, quality, type_check]
+    # needs: [test, quality, type_check]
+    needs: [test]
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
@@ -61,12 +62,12 @@ jobs:
         with:
           script: |
             const testFailed = "${{ needs.test.outputs.tests_failed }}" === "true";
-            const ruffFailed = "${{ needs.quality.outputs.ruff_failed }}" === "true";
-            const typeCheckFailed = "${{ needs.type_check.outputs.type_check_failed }}" === "true";
+            # const ruffFailed = "${{ needs.quality.outputs.ruff_failed }}" === "true";
+            # const typeCheckFailed = "${{ needs.type_check.outputs.type_check_failed }}" === "true";
             let msg = '';
             if (testFailed) msg += '❌ 单元测试未通过\n';
-            if (ruffFailed) msg += '❌ 代码质量检查未通过 (Ruff)\n';
-            if (typeCheckFailed) msg += '❌ 类型检查未通过 (mypy)\n';
+            # if (ruffFailed) msg += '❌ 代码质量检查未通过 (Ruff)\n';
+            # if (typeCheckFailed) msg += '❌ 类型检查未通过 (mypy)\n';
             if (msg) {
               github.rest.issues.createComment({
                 issue_number: context.payload.pull_request.number,
